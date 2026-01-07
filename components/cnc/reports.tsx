@@ -5,7 +5,10 @@ import { useCNC } from "@/lib/contexts/cnc-context"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { TrendingUp, TrendingDown, Package, Users, IndianRupee, Loader2 } from "lucide-react"
+import { TrendingUp, TrendingDown, Package, Users, IndianRupee, Loader2, Download } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import jsPDF from "jspdf"
+import autoTable from "jspdf-autotable"
 
 export function CNCReports() {
   const { materials, clients, orders, expenses, wastages, loading } = useCNC()
@@ -76,6 +79,62 @@ export function CNCReports() {
           <p className="text-muted-foreground">Business analytics and insights</p>
         </div>
         <Input type="month" value={filterMonth} onChange={(e) => setFilterMonth(e.target.value)} className="w-40" />
+      </div>
+
+      <div className="flex justify-end mb-4">
+        <Button
+          variant="outline"
+          className="gap-2"
+          onClick={() => {
+            const doc = new jsPDF()
+            const monthLabel = new Date(filterMonth + "-01").toLocaleDateString("en-IN", { month: "long", year: "numeric" })
+
+            doc.setFontSize(20)
+            doc.text("CNC Shop Business Report", 14, 22)
+            doc.setFontSize(12)
+            doc.text(`Period: ${monthLabel}`, 14, 30)
+            doc.text(`Generated on: ${new Date().toLocaleDateString("en-IN")}`, 14, 37)
+
+            // Add P&L Summary
+            doc.setFontSize(16)
+            doc.text("Profit & Loss Statement", 14, 50)
+            autoTable(doc, {
+              startY: 55,
+              head: [['Category', 'Amount (INR)']],
+              body: [
+                ['Total Sales Revenue', `Rs. ${totalSales.toLocaleString("en-IN")}`],
+                ['Material Cost', `Rs. ${totalMaterialCost.toLocaleString("en-IN")}`],
+                ['Gross Profit', `Rs. ${grossProfit.toLocaleString("en-IN")}`],
+                ['Labour Cost', `Rs. ${totalLabourCost.toLocaleString("en-IN")}`],
+                ['Other Expenses', `Rs. ${totalExpenses.toLocaleString("en-IN")}`],
+                ['Net Profit', `Rs. ${netProfit.toLocaleString("en-IN")}`],
+              ],
+              theme: 'striped',
+              headStyles: { fillColor: [79, 70, 229] }
+            })
+
+            // Add Stock Summary on new page if needed, or same page
+            doc.addPage()
+            doc.text("Inventory Status Report", 14, 22)
+            autoTable(doc, {
+              startY: 30,
+              head: [['Material', 'Stock', 'Rate', 'Total Value']],
+              body: materials.map(m => [
+                `${m.type} ${m.size} (${m.thickness}mm)`,
+                `${m.currentStock} sheets`,
+                `Rs. ${m.rate}`,
+                `Rs. ${(m.currentStock * m.rate).toLocaleString("en-IN")}`
+              ]),
+              foot: [['', '', 'Total Stock Value:', `Rs. ${totalStockValue.toLocaleString("en-IN")}`]],
+              theme: 'grid'
+            })
+
+            doc.save(`CNC_Report_${filterMonth}.pdf`)
+          }}
+        >
+          <Download className="w-4 h-4" />
+          Export Full Report PDF
+        </Button>
       </div>
 
       <Tabs defaultValue="pnl">

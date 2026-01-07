@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Plus, ClipboardList, Trash2, X, Loader2 } from "lucide-react"
+import { Plus, ClipboardList, Trash2, X, Loader2, Printer, FileText } from "lucide-react"
 
 const designTypes = [
   "Mandir Jali",
@@ -28,6 +28,7 @@ export function CNCOrders() {
   const [showAddOrder, setShowAddOrder] = useState(false)
   const [activeTab, setActiveTab] = useState("all")
   const [saving, setSaving] = useState(false)
+  const [showJobCard, setShowJobCard] = useState<Order | null>(null)
 
   const generateOrderNumber = () => {
     const date = new Date()
@@ -163,6 +164,10 @@ export function CNCOrders() {
     } catch (error) {
       console.error("Failed to delete order:", error)
     }
+  }
+
+  const handlePrint = () => {
+    window.print()
   }
 
   const filteredOrders = activeTab === "all" ? orders : orders.filter((o) => o.status === activeTab)
@@ -479,7 +484,13 @@ export function CNCOrders() {
                         </Select>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Button variant="outline" size="sm" className="flex-1 sm:flex-none h-9 px-4">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex-1 sm:flex-none h-9 px-4 gap-2"
+                          onClick={() => setShowJobCard(order)}
+                        >
+                          <FileText className="w-4 h-4" />
                           Job Card
                         </Button>
                         <Button variant="outline" size="icon" className="h-9 w-9 text-destructive" onClick={() => handleDeleteOrder(orderId)}>
@@ -494,6 +505,111 @@ export function CNCOrders() {
           })}
         </div>
       )}
+      {/* Job Card Dialog */}
+      <Dialog open={!!showJobCard} onOpenChange={(o) => !o && setShowJobCard(null)}>
+        <DialogContent className="max-w-2xl w-[95vw] rounded-2xl printing-area">
+          <DialogHeader className="print:hidden">
+            <DialogTitle>Order Job Card</DialogTitle>
+          </DialogHeader>
+
+          {showJobCard && (
+            <div className="space-y-6 pt-4">
+              <div className="flex justify-between items-start border-b pb-4">
+                <div>
+                  <h2 className="text-3xl font-black tracking-tight">{showJobCard.orderNumber}</h2>
+                  <p className="text-muted-foreground font-medium uppercase tracking-widest text-xs mt-1">CNC Workshop Job Card</p>
+                </div>
+                <div className="text-right">
+                  <p className="font-bold">{new Date(showJobCard.date).toLocaleDateString("en-IN")}</p>
+                  <p className="text-xs text-muted-foreground">Generated on {new Date().toLocaleDateString()}</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-8">
+                <div>
+                  <h4 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Client Details</h4>
+                  <p className="font-bold text-lg">{clients.find(c => (c.id || c._id) === showJobCard.clientId)?.name || "N/A"}</p>
+                  <p className="text-sm text-muted-foreground">{clients.find(c => (c.id || c._id) === showJobCard.clientId)?.mobile}</p>
+                </div>
+                <div className="text-right">
+                  <h4 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Target Delivery</h4>
+                  <p className="font-bold text-lg text-primary">{showJobCard.deliveryDate ? new Date(showJobCard.deliveryDate).toLocaleDateString("en-IN") : "TBD"}</p>
+                </div>
+              </div>
+
+              <div className="p-6 bg-primary/5 rounded-2xl border-2 border-primary/10">
+                <h4 className="text-[10px] font-bold uppercase tracking-widest text-primary mb-2">Job Description / Design Type</h4>
+                <p className="text-4xl font-black text-primary">{showJobCard.designType}</p>
+              </div>
+
+              <div className="space-y-3">
+                <h4 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground px-1">Material Cutting List</h4>
+                <div className="border border-border rounded-xl overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead className="bg-muted text-[10px] uppercase font-bold text-muted-foreground">
+                      <tr>
+                        <th className="text-left p-3">Material Type</th>
+                        <th className="text-center p-3">Size/Thick</th>
+                        <th className="text-right p-3">Quantity</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {showJobCard.materials.map((m, idx) => {
+                        const mat = materials.find((mt) => (mt.id || mt._id) === m.materialId)
+                        return (
+                          <tr key={idx}>
+                            <td className="p-3 font-bold">{mat?.type}</td>
+                            <td className="p-3 text-center">{mat?.size} @ {mat?.thickness}mm</td>
+                            <td className="p-3 text-right font-black text-lg">{m.quantity} Sheets</td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-6 pt-4">
+                <div className="h-24 border-2 border-dashed border-border rounded-xl p-3">
+                  <p className="text-[10px] font-bold uppercase text-muted-foreground">Workshop Notes</p>
+                </div>
+                <div className="h-24 border-2 border-dashed border-border rounded-xl p-3 flex flex-col justify-end">
+                  <p className="text-[10px] font-bold uppercase text-muted-foreground text-center border-t pt-2">Operator Signature</p>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 print:hidden pt-4">
+                <Button variant="outline" onClick={() => setShowJobCard(null)}>Cancel</Button>
+                <Button onClick={handlePrint} className="gap-2">
+                  <Printer className="w-4 h-4" />
+                  Print Job Card
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <style jsx global>{`
+        @media print {
+          body * {
+            visibility: hidden;
+          }
+          .printing-area, .printing-area * {
+            visibility: visible;
+          }
+          .printing-area {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            padding: 0;
+            margin: 0;
+            box-shadow: none;
+            border: none;
+          }
+        }
+      `}</style>
     </div>
   )
 }
