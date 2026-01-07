@@ -176,6 +176,30 @@ const WastageSchema = new Schema<IWastage>(
     { timestamps: true }
 )
 
+// Stock Adjustment Schema
+export interface IStockAdjustment extends Document {
+    materialId: mongoose.Types.ObjectId
+    date: Date
+    previousStock: number
+    newStock: number
+    adjustment: number
+    reason: string
+    createdAt: Date
+    updatedAt: Date
+}
+
+const StockAdjustmentSchema = new Schema<IStockAdjustment>(
+    {
+        materialId: { type: Schema.Types.ObjectId, ref: 'Material', required: true },
+        date: { type: Date, required: true },
+        previousStock: { type: Number, required: true },
+        newStock: { type: Number, required: true },
+        adjustment: { type: Number, required: true },
+        reason: { type: String, default: 'Manual Audit' },
+    },
+    { timestamps: true }
+)
+
 // Export models
 export const Material =
     mongoose.models.Material || mongoose.model<IMaterial>('Material', MaterialSchema)
@@ -194,3 +218,6 @@ export const CNCExpense =
 
 export const Wastage =
     mongoose.models.Wastage || mongoose.model<IWastage>('Wastage', WastageSchema)
+
+export const StockAdjustment =
+    mongoose.models.StockAdjustment || mongoose.model<IStockAdjustment>('StockAdjustment', StockAdjustmentSchema)

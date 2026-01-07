@@ -71,6 +71,17 @@ export type Wastage = {
   reason: string
 }
 
+export type StockAdjustment = {
+  _id?: string
+  id?: string
+  materialId: string
+  date: string
+  previousStock: number
+  newStock: number
+  adjustment: number
+  reason: string
+}
+
 type CNCContextType = {
   materials: Material[]
   purchases: Purchase[]
@@ -78,6 +89,7 @@ type CNCContextType = {
   orders: Order[]
   expenses: Expense[]
   wastages: Wastage[]
+  adjustments: StockAdjustment[]
   loading: boolean
   error: string | null
   // Material operations
@@ -99,13 +111,14 @@ type CNCContextType = {
   deleteExpense: (id: string) => Promise<void>
   // Wastage operations
   addWastage: (w: Omit<Wastage, '_id' | 'id'>) => Promise<void>
+  // Stock Adjustment operations
+  reconcileStock: (a: { materialId: string; newStock: number; reason: string; date: string }) => Promise<void>
   // Refresh
   refreshData: () => Promise<void>
 }
 
 const CNCContext = createContext<CNCContextType | null>(null)
 
-// Helper to normalize MongoDB _id to id
 const normalizeId = <T extends { _id?: string; id?: string }>(item: T): T & { id: string } => ({
   ...item,
   id: item._id || item.id || '',
@@ -118,30 +131,32 @@ export function CNCProvider({ children }: { children: ReactNode }) {
   const [orders, setOrders] = useState<Order[]>([])
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [wastages, setWastages] = useState<Wastage[]>([])
+  const [adjustments, setAdjustments] = useState<StockAdjustment[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  // Fetch all data
   const refreshData = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
-      const [materialsRes, purchasesRes, clientsRes, ordersRes, expensesRes, wastagesRes] = await Promise.all([
+      const [materialsRes, purchasesRes, clientsRes, ordersRes, expensesRes, wastagesRes, adjustmentsRes] = await Promise.all([
         fetch('/api/cnc/materials'),
         fetch('/api/cnc/purchases'),
         fetch('/api/cnc/clients'),
         fetch('/api/cnc/orders'),
         fetch('/api/cnc/expenses'),
         fetch('/api/cnc/wastages'),
+        fetch('/api/cnc/adjustments'),
       ])
 
-      const [materialsData, purchasesData, clientsData, ordersData, expensesData, wastagesData] = await Promise.all([
+      const [materialsData, purchasesData, clientsData, ordersData, expensesData, wastagesData, adjustmentsData] = await Promise.all([
         materialsRes.json(),
         purchasesRes.json(),
         clientsRes.json(),
         ordersRes.json(),
         expensesRes.json(),
         wastagesRes.json(),
+        adjustmentsRes.json(),
       ])
 
       setMaterials(Array.isArray(materialsData) ? materialsData.map(normalizeId) : [])
@@ -150,6 +165,7 @@ export function CNCProvider({ children }: { children: ReactNode }) {
       setOrders(Array.isArray(ordersData) ? ordersData.map(normalizeId) : [])
       setExpenses(Array.isArray(expensesData) ? expensesData.map(normalizeId) : [])
       setWastages(Array.isArray(wastagesData) ? wastagesData.map(normalizeId) : [])
+      setAdjustments(Array.isArray(adjustmentsData) ? adjustmentsData.map(normalizeId) : [])
     } catch (err) {
       console.error('Error fetching CNC data:', err)
       setError(err instanceof Error ? err.message : 'Failed to fetch data')
@@ -162,7 +178,6 @@ export function CNCProvider({ children }: { children: ReactNode }) {
     refreshData()
   }, [refreshData])
 
-  // Material operations
   const addMaterial = async (m: Omit<Material, '_id' | 'id'>) => {
     const res = await fetch('/api/cnc/materials', {
       method: 'POST',
@@ -191,7 +206,6 @@ export function CNCProvider({ children }: { children: ReactNode }) {
     setMaterials((prev) => prev.filter((m) => m.id !== id && m._id !== id))
   }
 
-  // Purchase operations  
   const addPurchase = async (p: Omit<Purchase, '_id' | 'id'>) => {
     const res = await fetch('/api/cnc/purchases', {
       method: 'POST',
@@ -201,11 +215,9 @@ export function CNCProvider({ children }: { children: ReactNode }) {
     if (!res.ok) throw new Error('Failed to add purchase')
     const newPurchase = await res.json()
     setPurchases((prev) => [normalizeId(newPurchase), ...prev])
-    // Refresh materials to get updated stock
     await refreshData()
   }
 
-  // Client operations
   const addClient = async (c: Omit<Client, '_id' | 'id'>) => {
     const res = await fetch('/api/cnc/clients', {
       method: 'POST',
@@ -234,7 +246,6 @@ export function CNCProvider({ children }: { children: ReactNode }) {
     setClients((prev) => prev.filter((c) => c.id !== id && c._id !== id))
   }
 
-  // Order operations
   const addOrder = async (o: Omit<Order, '_id' | 'id'>) => {
     const res = await fetch('/api/cnc/orders', {
       method: 'POST',
@@ -244,7 +255,6 @@ export function CNCProvider({ children }: { children: ReactNode }) {
     if (!res.ok) throw new Error('Failed to add order')
     const newOrder = await res.json()
     setOrders((prev) => [normalizeId(newOrder), ...prev])
-    // Refresh materials to get updated stock
     await refreshData()
   }
 
@@ -265,7 +275,6 @@ export function CNCProvider({ children }: { children: ReactNode }) {
     setOrders((prev) => prev.filter((o) => o.id !== id && o._id !== id))
   }
 
-  // Expense operations
   const addExpense = async (e: Omit<Expense, '_id' | 'id'>) => {
     const res = await fetch('/api/cnc/expenses', {
       method: 'POST',
@@ -283,7 +292,6 @@ export function CNCProvider({ children }: { children: ReactNode }) {
     setExpenses((prev) => prev.filter((e) => e.id !== id && e._id !== id))
   }
 
-  // Wastage operations
   const addWastage = async (w: Omit<Wastage, '_id' | 'id'>) => {
     const res = await fetch('/api/cnc/wastages', {
       method: 'POST',
@@ -293,7 +301,21 @@ export function CNCProvider({ children }: { children: ReactNode }) {
     if (!res.ok) throw new Error('Failed to add wastage')
     const newWastage = await res.json()
     setWastages((prev) => [normalizeId(newWastage), ...prev])
-    // Refresh materials to get updated stock
+    await refreshData()
+  }
+
+  const reconcileStock = async (a: { materialId: string; newStock: number; reason: string; date: string }) => {
+    const res = await fetch('/api/cnc/adjustments', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(a),
+    })
+    if (!res.ok) {
+      const errorData = await res.json()
+      throw new Error(errorData.error || 'Failed to reconcile stock')
+    }
+    const newAdjustment = await res.json()
+    setAdjustments((prev) => [normalizeId(newAdjustment), ...prev])
     await refreshData()
   }
 
@@ -306,6 +328,7 @@ export function CNCProvider({ children }: { children: ReactNode }) {
         orders,
         expenses,
         wastages,
+        adjustments,
         loading,
         error,
         addMaterial,
@@ -321,6 +344,7 @@ export function CNCProvider({ children }: { children: ReactNode }) {
         addExpense,
         deleteExpense,
         addWastage,
+        reconcileStock,
         refreshData,
       }}
     >
@@ -335,6 +359,5 @@ export function useCNC() {
   return ctx
 }
 
-// Backward compatibility alias
 export const useApp = useCNC
 export const AppProvider = CNCProvider

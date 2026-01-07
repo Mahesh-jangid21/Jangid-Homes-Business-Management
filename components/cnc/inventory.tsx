@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { useCNC, type Material, type Purchase, type Wastage } from "@/lib/contexts/cnc-context"
+import { useCNC, type Material, type Purchase, type Wastage, type StockAdjustment } from "@/lib/contexts/cnc-context"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -9,18 +9,25 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Plus, Package, ShoppingCart, Trash2, Loader2 } from "lucide-react"
+import { Plus, Package, ShoppingCart, Trash2, Loader2, ClipboardCheck, History } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 const materialTypes = ["Acrylic", "WPC", "MDF", "HDMR", "Plywood", "Wood"] as const
 const sheetSizes = ["8x4", "9x4", "6x4", "Custom"]
 
 export function CNCInventory() {
-  const { materials, purchases, wastages, loading, addMaterial, addPurchase, addWastage, deleteMaterial } = useCNC()
+  const { materials, purchases, wastages, adjustments, loading, addMaterial, addPurchase, addWastage, deleteMaterial, reconcileStock } = useCNC()
   const [showAddMaterial, setShowAddMaterial] = useState(false)
   const [showAddPurchase, setShowAddPurchase] = useState(false)
   const [showAddWastage, setShowAddWastage] = useState(false)
+  const [showReconcile, setShowReconcile] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+
+  const [auditData, setAuditData] = useState({
+    newStock: 0,
+    reason: "Manual Stock Audit",
+    date: new Date().toISOString().split("T")[0],
+  })
 
   const [newMaterial, setNewMaterial] = useState<Partial<Material>>({
     type: "Acrylic",
@@ -120,6 +127,29 @@ export function CNCInventory() {
       })
     } catch (error) {
       console.error("Failed to add wastage:", error)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleReconcile = async () => {
+    if (!showReconcile) return
+    setSaving(true)
+    try {
+      await reconcileStock({
+        materialId: showReconcile,
+        newStock: auditData.newStock,
+        reason: auditData.reason,
+        date: auditData.date,
+      })
+      setShowReconcile(null)
+      setAuditData({
+        newStock: 0,
+        reason: "Manual Stock Audit",
+        date: new Date().toISOString().split("T")[0],
+      })
+    } catch (error) {
+      console.error("Failed to reconcile stock:", error)
     } finally {
       setSaving(false)
     }
@@ -404,6 +434,7 @@ export function CNCInventory() {
           <TabsTrigger value="stock">Current Stock</TabsTrigger>
           <TabsTrigger value="purchases">Purchase History</TabsTrigger>
           <TabsTrigger value="wastage">Wastage Log</TabsTrigger>
+          <TabsTrigger value="adjustments">Audit Logs</TabsTrigger>
         </TabsList>
 
         <TabsContent value="stock" className="mt-4">
@@ -445,7 +476,23 @@ export function CNCInventory() {
                           {m.currentStock <= m.lowStockAlert && (
                             <span className="px-2 py-0.5 bg-amber-100 text-amber-800 text-[10px] font-bold rounded uppercase tracking-wider">Low</span>
                           )}
-                          <Button variant="outline" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleDeleteMaterial(m.id || "")}>
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            className="h-8 w-8 text-primary border-primary/20 hover:bg-primary/5"
+                            onClick={() => {
+                              setShowReconcile(m.id || null)
+                              setAuditData({ ...auditData, newStock: m.currentStock })
+                            }}
+                          >
+                            <ClipboardCheck className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            className="h-8 w-8 text-destructive border-destructive/20 hover:bg-destructive/5"
+                            onClick={() => handleDeleteMaterial(m.id || "")}
+                          >
                             <Trash2 className="w-3.5 h-3.5" />
                           </Button>
                         </div>
@@ -454,6 +501,48 @@ export function CNCInventory() {
                   </CardContent>
                 </Card>
               ))}
+
+              <Dialog open={!!showReconcile} onOpenChange={(o) => !o && setShowReconcile(null)}>
+                <DialogContent className="max-w-md w-[95vw] rounded-2xl">
+                  <DialogHeader>
+                    <DialogTitle>Stock Audit / Reconciliation</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4 pt-4">
+                    <p className="text-sm text-muted-foreground">
+                      Enter the actual count of sheets currently available in your shop.
+                      This will correct the system record and create an audit trail.
+                    </p>
+                    <div className="space-y-2">
+                      <Label>Actual Physical Stock (sheets)</Label>
+                      <Input
+                        type="number"
+                        value={auditData.newStock}
+                        onChange={(e) => setAuditData({ ...auditData, newStock: Number(e.target.value) })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Audit Date</Label>
+                      <Input
+                        type="date"
+                        value={auditData.date}
+                        onChange={(e) => setAuditData({ ...auditData, date: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Note / Reason</Label>
+                      <Input
+                        value={auditData.reason}
+                        onChange={(e) => setAuditData({ ...auditData, reason: e.target.value })}
+                        placeholder="e.g., Monthly inventory check"
+                      />
+                    </div>
+                    <Button onClick={handleReconcile} className="w-full" disabled={saving}>
+                      {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                      Update Stock Record
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
             </div>
           )}
         </TabsContent>
@@ -516,6 +605,42 @@ export function CNCInventory() {
                         <div className="text-right">
                           <p className="text-base font-black text-amber-600">{w.quantity} sheets</p>
                           <p className="text-[10px] text-muted-foreground font-bold mt-0.5 uppercase tracking-wider">Wastage</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )
+              })}
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="adjustments" className="mt-4">
+          {adjustments.length === 0 ? (
+            <Card>
+              <CardContent className="py-12 text-center">
+                <History className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+                <p className="text-muted-foreground">No audit adjustments yet.</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid gap-3">
+              {adjustments.map((a) => {
+                const material = materials.find((m) => m.id === a.materialId)
+                return (
+                  <Card key={a.id}>
+                    <CardContent className="p-4">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">{new Date(a.date).toLocaleDateString("en-IN")}</p>
+                          <h3 className="font-bold text-base mt-0.5">{material ? `${material.type} - ${material.size}` : "Unknown"}</h3>
+                          <p className="text-xs text-muted-foreground italic">Note: {a.reason}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className={cn("text-base font-black", a.adjustment > 0 ? "text-green-600" : "text-amber-600")}>
+                            {a.adjustment > 0 ? "+" : ""}{a.adjustment} sheets
+                          </p>
+                          <p className="text-[10px] text-muted-foreground font-bold mt-0.5 uppercase tracking-wider">Correction</p>
                         </div>
                       </div>
                     </CardContent>
