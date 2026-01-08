@@ -88,10 +88,16 @@ export interface IOrder extends Document {
     date: Date
     clientId: mongoose.Types.ObjectId
     designType: string
-    materials: { materialId: mongoose.Types.ObjectId; quantity: number; cost: number }[]
+    materials: { materialId: mongoose.Types.ObjectId; quantity: number; width?: number; height?: number; cost: number }[]
     labourCost: number
     totalValue: number
     advanceReceived: number
+    payments: {
+        amount: number;
+        date: Date;
+        method: 'Cash' | 'UPI' | 'Card' | 'Bank';
+        account?: 'Kamal Jangid' | 'Hiralal Jangid'
+    }[]
     balanceAmount: number
     deliveryDate: Date
     status: 'Pending' | 'In Progress' | 'Completed' | 'Billed'
@@ -109,12 +115,22 @@ const OrderSchema = new Schema<IOrder>(
             {
                 materialId: { type: Schema.Types.ObjectId, ref: 'Material' },
                 quantity: { type: Number },
+                width: { type: Number },
+                height: { type: Number },
                 cost: { type: Number },
             },
         ],
         labourCost: { type: Number, default: 0 },
         totalValue: { type: Number, default: 0 },
         advanceReceived: { type: Number, default: 0 },
+        payments: [
+            {
+                amount: { type: Number, required: true },
+                date: { type: Date, default: Date.now },
+                method: { type: String, enum: ['Cash', 'UPI', 'Card', 'Bank'], required: true },
+                account: { type: String, enum: ['Kamal Jangid', 'Hiralal Jangid'] },
+            }
+        ],
         balanceAmount: { type: Number, default: 0 },
         deliveryDate: { type: Date },
         status: {
@@ -132,7 +148,8 @@ export interface ICNCExpense extends Document {
     type: 'Raw Material' | 'Labour' | 'Electricity' | 'Rent' | 'Maintenance' | 'Transport' | 'Misc'
     description: string
     amount: number
-    paymentMode: 'Cash' | 'Bank' | 'UPI'
+    paymentMode: 'Cash' | 'Bank' | 'UPI' | 'Card'
+    account?: 'Kamal Jangid' | 'Hiralal Jangid'
     createdAt: Date
     updatedAt: Date
 }
@@ -149,9 +166,10 @@ const CNCExpenseSchema = new Schema<ICNCExpense>(
         amount: { type: Number, required: true },
         paymentMode: {
             type: String,
-            enum: ['Cash', 'Bank', 'UPI'],
+            enum: ['Cash', 'Bank', 'UPI', 'Card'],
             default: 'Cash',
         },
+        account: { type: String, enum: ['Kamal Jangid', 'Hiralal Jangid'] },
     },
     { timestamps: true }
 )

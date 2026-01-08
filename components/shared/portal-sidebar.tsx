@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { signOut, useSession } from "next-auth/react"
 import { cn } from "@/lib/utils"
 import { usePortal } from "@/lib/contexts/portal-context"
 import { BusinessSelector } from "./business-selector"
@@ -14,9 +15,10 @@ import {
   Home,
   Building2,
   Menu,
-  X,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  LogOut,
+  User
 } from "lucide-react"
 import {
   Sheet,
@@ -26,10 +28,12 @@ import {
   SheetTitle
 } from "@/components/ui/sheet"
 import { Button } from "@/components/ui/button"
+import { Search } from "lucide-react"
 
 // CNC Shop menu
 const cncMenuItems = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { id: "client-search", label: "Client Search", icon: Search },
   { id: "inventory", label: "Inventory", icon: Package },
   { id: "clients", label: "Clients", icon: Users },
   { id: "orders", label: "Orders", icon: ClipboardList },
@@ -122,11 +126,21 @@ function SidebarContent({ activeModule, setActiveModule, onSelect, collapsed }: 
       </nav>
 
       {/* Footer */}
-      <div className="p-4 border-t border-border bg-muted/20">
+      <div className="p-4 border-t border-border bg-muted/20 space-y-3">
         <div className={cn("flex items-center gap-2 text-xs text-muted-foreground", collapsed ? "justify-center" : "justify-center")}>
           <div className="w-1.5 h-1.5 bg-green-500 rounded-full" />
           {!collapsed && <span>Database Active</span>}
         </div>
+        <Button
+          variant="ghost"
+          size={collapsed ? "icon" : "sm"}
+          className={cn("w-full text-muted-foreground hover:text-foreground", collapsed ? "justify-center" : "justify-start gap-2")}
+          onClick={() => signOut({ callbackUrl: '/login' })}
+          title={collapsed ? "Sign Out" : undefined}
+        >
+          <LogOut className="w-4 h-4" />
+          {!collapsed && <span>Sign Out</span>}
+        </Button>
       </div>
     </div>
   )

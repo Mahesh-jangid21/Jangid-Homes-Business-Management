@@ -67,9 +67,50 @@ export function CNCReports() {
   const pendingPayments = orders
     .filter((o) => o.balanceAmount > 0)
     .map((o) => {
-      const client = clients.find((c) => c.id === o.clientId)
+      const client = clients.find((c) => (c.id || c._id) === o.clientId)
       return { ...o, clientName: client?.name || "Unknown" }
     })
+
+  // Payment Breakdown
+  const allPayments = orders.flatMap(o => {
+    if (o.payments && o.payments.length > 0) {
+      return o.payments.map(p => ({ ...p, orderNumber: o.orderNumber }))
+    }
+    // Fallback for orders created before detailed payment tracking
+    if (o.advanceReceived > 0) {
+      return [{
+        amount: o.advanceReceived,
+        date: String(o.date),
+        method: 'Cash' as const,
+        orderNumber: o.orderNumber
+      }]
+    }
+    return []
+  })
+  const monthPayments = allPayments.filter(p => {
+    try {
+      return p.date && new Date(p.date).toISOString().startsWith(filterMonth)
+    } catch {
+      return false
+    }
+  })
+
+  const paymentsByMethod = monthPayments.reduce((acc, p) => {
+    acc[p.method] = (acc[p.method] || 0) + p.amount
+    return acc
+  }, {} as Record<string, number>)
+
+  const paymentsByAccount = monthPayments.reduce((acc, p) => {
+    const key = p.account || 'Cash'
+    acc[key] = (acc[key] || 0) + p.amount
+    return acc
+  }, {} as Record<string, number>)
+
+  const expensesByAccount = monthExpenses.reduce((acc, e) => {
+    const key = (e as any).account || 'Cash'
+    acc[key] = (acc[key] || 0) + e.amount
+    return acc
+  }, {} as Record<string, number>)
 
   return (
     <div className="space-y-6">
@@ -113,7 +154,52 @@ export function CNCReports() {
               headStyles: { fillColor: [79, 70, 229] }
             })
 
-            // Add Stock Summary on new page if needed, or same page
+            // Add Payment Summary
+            doc.addPage()
+            doc.setFontSize(16)
+            doc.text("Cash Flow Summary", 14, 22)
+
+            // Collections by Recipient
+            doc.setFontSize(14)
+            doc.text("1. Collections (Received)", 14, 32)
+            autoTable(doc, {
+              startY: 35,
+              head: [['Recipient', 'Total Received (INR)']],
+              body: Object.entries(paymentsByAccount).map(([acc, amt]) => [
+                acc, `Rs. ${amt.toLocaleString("en-IN")}`
+              ]),
+              theme: 'striped',
+              headStyles: { fillColor: [16, 185, 129] }
+            })
+
+            // Expenses by Recipient
+            const currentY = (doc as any).lastAutoTable.finalY + 15
+            doc.text("2. Expenses (Paid Out)", 14, currentY)
+            autoTable(doc, {
+              startY: currentY + 3,
+              head: [['Recipient', 'Total Paid (INR)']],
+              body: Object.entries(expensesByAccount).map(([acc, amt]) => [
+                acc, `Rs. ${amt.toLocaleString("en-IN")}`
+              ]),
+              theme: 'striped',
+              headStyles: { fillColor: [239, 68, 68] }
+            })
+
+            // Net Balance
+            const finalY = (doc as any).lastAutoTable.finalY + 15
+            doc.text("3. Net Cash Flow", 14, finalY)
+            autoTable(doc, {
+              startY: finalY + 3,
+              head: [['Recipient', 'Net Balance (INR)']],
+              body: Array.from(new Set([...Object.keys(paymentsByAccount), ...Object.keys(expensesByAccount)])).map(acc => {
+                const net = (paymentsByAccount[acc] || 0) - (expensesByAccount[acc] || 0)
+                return [acc, `Rs. ${net.toLocaleString("en-IN")}`]
+              }),
+              theme: 'striped',
+              headStyles: { fillColor: [59, 130, 246] }
+            })
+
+            // Add Stock Summary on new page
             doc.addPage()
             doc.text("Inventory Status Report", 14, 22)
             autoTable(doc, {
@@ -143,6 +229,7 @@ export function CNCReports() {
           <TabsTrigger value="stock">Stock Report</TabsTrigger>
           <TabsTrigger value="clients">Client Sales</TabsTrigger>
           <TabsTrigger value="pending">Pending Payments</TabsTrigger>
+          <TabsTrigger value="collections">Collections</TabsTrigger>
         </TabsList>
 
         <TabsContent value="pnl" className="mt-4 space-y-4">
@@ -412,6 +499,123 @@ export function CNCReports() {
               </Card>
             </>
           )}
+        </TabsContent>
+
+        <TabsContent value="collections" className="mt-4 space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm font-medium">By Received Person</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {Object.entries(paymentsByAccount).map(([acc, amt]) => (
+                    <div key={acc} className="flex justify-between items-center py-2 border-b last:border-0">
+                      <span className="font-medium text-muted-foreground">{acc}</span>
+                      <span className="text-lg font-bold">₹{amt.toLocaleString("en-IN")}</span>
+                    </div>
+                  ))}
+                  <div className="flex justify-between items-center pt-2 border-t font-black text-green-600">
+                    <span>Total Collections</span>
+                    <span>₹{monthPayments.reduce((sum, p) => sum + p.amount, 0).toLocaleString("en-IN")}</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm font-medium">By Payment Method</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {Object.entries(paymentsByMethod).map(([method, amt]) => (
+                    <div key={method} className="flex justify-between items-center py-2 border-b last:border-0">
+                      <span className="font-medium text-muted-foreground">{method}</span>
+                      <span className="text-lg font-bold">₹{amt.toLocaleString("en-IN")}</span>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm font-medium">Expenses by Paid Person</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {Object.entries(expensesByAccount).map(([acc, amt]) => (
+                    <div key={acc} className="flex justify-between items-center py-2 border-b last:border-0">
+                      <span className="font-medium text-muted-foreground">{acc}</span>
+                      <span className="text-lg font-bold text-red-600">₹{amt.toLocaleString("en-IN")}</span>
+                    </div>
+                  ))}
+                  <div className="flex justify-between items-center pt-2 border-t font-black text-red-600">
+                    <span>Total Expenses</span>
+                    <span>₹{monthExpenses.reduce((sum, e) => sum + e.amount, 0).toLocaleString("en-IN")}</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm font-medium">Net Cash Flow (Collections - Expenses)</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {Array.from(new Set([...Object.keys(paymentsByAccount), ...Object.keys(expensesByAccount)])).map(acc => {
+                    const received = paymentsByAccount[acc] || 0
+                    const paid = expensesByAccount[acc] || 0
+                    const net = received - paid
+                    return (
+                      <div key={acc} className="flex justify-between items-center py-2 border-b last:border-0">
+                        <span className="font-medium text-muted-foreground">{acc}</span>
+                        <span className={`text-lg font-bold ${net >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          ₹{net.toLocaleString("en-IN")}
+                        </span>
+                      </div>
+                    )
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Recent Transactions</CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              <table className="w-full">
+                <thead className="bg-muted">
+                  <tr>
+                    <th className="text-left p-4 font-medium">Order</th>
+                    <th className="text-left p-4 font-medium">Date</th>
+                    <th className="text-left p-4 font-medium">Method</th>
+                    <th className="text-left p-4 font-medium">Person</th>
+                    <th className="text-right p-4 font-medium">Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {monthPayments.sort((a, b) => b.date.localeCompare(a.date)).map((p, idx) => (
+                    <tr key={idx} className="border-t">
+                      <td className="p-4 font-medium">{(p as any).orderNumber}</td>
+                      <td className="p-4">{new Date(p.date).toLocaleDateString("en-IN")}</td>
+                      <td className="p-4">
+                        <span className="px-2 py-1 bg-muted rounded text-xs">{p.method}</span>
+                      </td>
+                      <td className="p-4">{p.account || "Cash"}</td>
+                      <td className="p-4 text-right font-bold text-green-600">₹{p.amount.toLocaleString("en-IN")}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>

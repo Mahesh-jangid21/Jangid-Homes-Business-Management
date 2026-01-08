@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import dbConnect from '@/lib/db/mongodb'
 import { CNCExpense } from '@/lib/models/cnc-shop'
+import { cncExpenseSchema, formatValidationErrors } from '@/lib/validations'
 
 export async function GET() {
     try {
@@ -17,7 +18,17 @@ export async function POST(request: NextRequest) {
     try {
         await dbConnect()
         const body = await request.json()
-        const expense = await CNCExpense.create(body)
+
+        // Validate input
+        const validation = cncExpenseSchema.safeParse(body)
+        if (!validation.success) {
+            return NextResponse.json(
+                { error: 'Validation failed', details: formatValidationErrors(validation.error) },
+                { status: 400 }
+            )
+        }
+
+        const expense = await CNCExpense.create(validation.data)
         return NextResponse.json(expense, { status: 201 })
     } catch (error) {
         console.error('Error creating expense:', error)

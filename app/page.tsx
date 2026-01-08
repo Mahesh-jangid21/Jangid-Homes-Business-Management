@@ -11,6 +11,7 @@ import { CNCClients } from "@/components/cnc/clients"
 import { CNCOrders } from "@/components/cnc/orders"
 import { CNCExpenses } from "@/components/cnc/expenses"
 import { CNCReports } from "@/components/cnc/reports"
+import { ClientSearch } from "@/components/cnc/client-search"
 // Interiors components
 import { InteriorsDashboard } from "@/components/interiors/dashboard"
 import { InteriorsClients } from "@/components/interiors/clients"
@@ -36,6 +37,8 @@ function PortalContent() {
     switch (activeModule) {
       case "dashboard":
         return <CNCDashboard />
+      case "client-search":
+        return <ClientSearch />
       case "inventory":
         return <CNCInventory />
       case "clients":

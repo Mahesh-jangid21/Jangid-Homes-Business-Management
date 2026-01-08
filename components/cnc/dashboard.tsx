@@ -18,10 +18,16 @@ export function CNCDashboard() {
   const today = new Date().toISOString().split("T")[0]
   const thisMonth = new Date().toISOString().slice(0, 7)
 
-  const todayOrders = orders.filter((o) => o.date === today)
+  const todayOrders = orders.filter((o) => {
+    if (!o.date) return false
+    return o.date.startsWith(today)
+  })
   const todaySales = todayOrders.reduce((sum, o) => sum + o.totalValue, 0)
 
-  const monthOrders = orders.filter((o) => o.date.startsWith(thisMonth))
+  const monthOrders = orders.filter((o) => {
+    if (!o.date) return false
+    return o.date.startsWith(thisMonth)
+  })
   const monthSales = monthOrders.reduce((sum, o) => sum + o.totalValue, 0)
   const monthExpenses = expenses.filter((e) => e.date.startsWith(thisMonth)).reduce((sum, e) => sum + e.amount, 0)
   const monthMaterialCost = monthOrders.reduce((sum, o) => sum + o.materials.reduce((s, m) => s + m.cost, 0), 0)

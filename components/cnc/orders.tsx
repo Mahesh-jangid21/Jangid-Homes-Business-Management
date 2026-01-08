@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Plus, ClipboardList, Trash2, X, Loader2, Printer, FileText } from "lucide-react"
+import { Plus, ClipboardList, Trash2, X, Loader2, Printer, FileText, IndianRupee, Search } from "lucide-react"
 
 const designTypes = [
   "Mandir Jali",
@@ -29,12 +29,30 @@ export function CNCOrders() {
   const [activeTab, setActiveTab] = useState("all")
   const [saving, setSaving] = useState(false)
   const [showJobCard, setShowJobCard] = useState<Order | null>(null)
+  const [showPaymentDialog, setShowPaymentDialog] = useState<Order | null>(null)
+  const [paymentAmount, setPaymentAmount] = useState(0)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [materialWidth, setMaterialWidth] = useState<number>(0)
+  const [materialHeight, setMaterialHeight] = useState<number>(0)
+  const [useCustomSize, setUseCustomSize] = useState(false)
+  const [paymentMethod, setPaymentMethod] = useState<'Cash' | 'UPI' | 'Card' | 'Bank'>('Cash')
+  const [paymentAccount, setPaymentAccount] = useState<'Kamal Jangid' | 'Hiralal Jangid' | ''>('')
 
   const generateOrderNumber = () => {
     const date = new Date()
     const prefix = `ORD${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, "0")}`
     const count = orders.filter((o) => o.orderNumber.startsWith(prefix)).length + 1
     return `${prefix}-${String(count).padStart(3, "0")}`
+  }
+
+  const getSheetArea = (size: string) => {
+    const parts = size.toLowerCase().split("x")
+    if (parts.length === 2) {
+      const w = parseFloat(parts[0])
+      const h = parseFloat(parts[1])
+      if (!isNaN(w) && !isNaN(h)) return w * h
+    }
+    return 32 // Default 8x4
   }
 
   const [newOrder, setNewOrder] = useState<Partial<Order>>({
@@ -59,19 +77,25 @@ export function CNCOrders() {
     const material = materials.find((m) => (m.id || m._id) === selectedMaterial)
     if (!material) return
 
-    const existingIdx = newOrder.materials?.findIndex((m) => m.materialId === selectedMaterial)
     const updatedMaterials = [...(newOrder.materials || [])]
 
-    if (existingIdx !== undefined && existingIdx >= 0) {
-      updatedMaterials[existingIdx].quantity += materialQty
-      updatedMaterials[existingIdx].cost = updatedMaterials[existingIdx].quantity * material.rate
-    } else {
-      updatedMaterials.push({
-        materialId: selectedMaterial,
-        quantity: materialQty,
-        cost: materialQty * material.rate,
-      })
+    let finalQty = materialQty
+    let itemCost = materialQty * material.rate
+
+    if (useCustomSize && materialWidth > 0 && materialHeight > 0) {
+      const sheetArea = getSheetArea(material.size)
+      const customArea = materialWidth * materialHeight
+      finalQty = (customArea / sheetArea) * materialQty
+      itemCost = finalQty * material.rate
     }
+
+    updatedMaterials.push({
+      materialId: selectedMaterial,
+      quantity: finalQty,
+      width: useCustomSize ? materialWidth : undefined,
+      height: useCustomSize ? materialHeight : undefined,
+      cost: itemCost,
+    })
 
     const materialCost = updatedMaterials.reduce((sum, m) => sum + m.cost, 0)
     const totalValue = materialCost + (newOrder.labourCost || 0)
@@ -85,6 +109,9 @@ export function CNCOrders() {
     })
     setSelectedMaterial("")
     setMaterialQty(1)
+    setMaterialWidth(0)
+    setMaterialHeight(0)
+    setUseCustomSize(false)
   }
 
   const removeMaterialFromOrder = (materialId: string) => {
@@ -125,6 +152,12 @@ export function CNCOrders() {
         labourCost: newOrder.labourCost || 0,
         totalValue: newOrder.totalValue || 0,
         advanceReceived: newOrder.advanceReceived || 0,
+        payments: (newOrder.advanceReceived || 0) > 0 ? [{
+          amount: newOrder.advanceReceived || 0,
+          date: new Date().toISOString(),
+          method: paymentMethod,
+          account: (paymentMethod !== 'Cash') ? (paymentAccount as any) : undefined
+        }] : [],
         balanceAmount: newOrder.balanceAmount || 0,
         deliveryDate: newOrder.deliveryDate || "",
         status: newOrder.status as Order["status"],
@@ -143,6 +176,8 @@ export function CNCOrders() {
         deliveryDate: "",
         status: "Pending",
       })
+      setPaymentMethod('Cash')
+      setPaymentAccount('')
     } catch (error) {
       console.error("Failed to add order:", error)
     } finally {
@@ -170,7 +205,56 @@ export function CNCOrders() {
     window.print()
   }
 
-  const filteredOrders = activeTab === "all" ? orders : orders.filter((o) => o.status === activeTab)
+  const handleRecordPayment = async () => {
+    if (!showPaymentDialog || paymentAmount <= 0) return
+    setSaving(true)
+    try {
+      const orderId = showPaymentDialog.id || showPaymentDialog._id || ""
+      const currentAdvance = showPaymentDialog.advanceReceived || 0
+      const newAdvance = currentAdvance + paymentAmount
+      const newBalance = (showPaymentDialog.totalValue || 0) - newAdvance
+
+      const newPayment = {
+        amount: paymentAmount,
+        date: new Date().toISOString(),
+        method: paymentMethod,
+        account: (paymentMethod !== 'Cash') ? (paymentAccount as any) : undefined
+      }
+
+      await updateOrder(orderId, {
+        advanceReceived: newAdvance,
+        payments: [...(showPaymentDialog.payments || []), newPayment],
+        balanceAmount: Math.max(0, newBalance),
+      })
+      setShowPaymentDialog(null)
+      setPaymentAmount(0)
+      setPaymentMethod('Cash')
+      setPaymentAccount('')
+    } catch (error) {
+      console.error("Failed to record payment:", error)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  // Filter orders by tab and search
+  const filteredOrders = orders.filter((o) => {
+    // Tab filter
+    const matchesTab = activeTab === "all" || o.status === activeTab
+
+    // Search filter
+    if (!searchQuery.trim()) return matchesTab
+
+    const query = searchQuery.toLowerCase()
+    const client = clients.find(c => (c.id || c._id) === o.clientId)
+    const matchesSearch =
+      o.orderNumber.toLowerCase().includes(query) ||
+      (client?.name?.toLowerCase().includes(query) ?? false) ||
+      (client?.mobile?.includes(query) ?? false) ||
+      o.designType.toLowerCase().includes(query)
+
+    return matchesTab && matchesSearch
+  })
 
   const getStatusColor = (status: Order["status"]) => {
     switch (status) {
@@ -299,6 +383,41 @@ export function CNCOrders() {
                     Add
                   </Button>
                 </div>
+                {selectedMaterial && (
+                  <div className="flex items-center gap-4 p-2 bg-primary/5 rounded-lg border border-primary/10">
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        id="customSize"
+                        checked={useCustomSize}
+                        onChange={(e) => setUseCustomSize(e.target.checked)}
+                        className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
+                      />
+                      <Label htmlFor="customSize" className="text-xs font-medium cursor-pointer">
+                        Custom Size (Width x Height)
+                      </Label>
+                    </div>
+                    {useCustomSize && (
+                      <div className="flex items-center gap-2 animate-in fade-in slide-in-from-left-2 duration-200">
+                        <Input
+                          type="number"
+                          placeholder="W"
+                          className="w-16 h-8 text-xs"
+                          value={materialWidth || ""}
+                          onChange={(e) => setMaterialWidth(Number(e.target.value))}
+                        />
+                        <span className="text-xs text-muted-foreground">x</span>
+                        <Input
+                          type="number"
+                          placeholder="H"
+                          className="w-16 h-8 text-xs"
+                          value={materialHeight || ""}
+                          onChange={(e) => setMaterialHeight(Number(e.target.value))}
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
                 {newOrder.materials && newOrder.materials.length > 0 && (
                   <div className="mt-2 space-y-2">
                     {newOrder.materials.map((m) => {
@@ -306,7 +425,17 @@ export function CNCOrders() {
                       return (
                         <div key={m.materialId} className="flex justify-between items-center p-2 bg-muted rounded">
                           <span>
-                            {material ? `${material.type} - ${material.size} (${material.thickness}mm) x ${m.quantity}` : "Unknown"}
+                            {material ? (
+                              <>
+                                {material.type} - {material.size} ({material.thickness}mm)
+                                {m.width && m.height && (
+                                  <span className="ml-1 text-primary font-medium">
+                                    [{m.width}x{m.height}]
+                                  </span>
+                                )}
+                                <span className="ml-1 text-muted-foreground">x {m.quantity.toFixed(2)} sheets</span>
+                              </>
+                            ) : "Unknown"}
                           </span>
                           <div className="flex items-center gap-2">
                             <span className="font-medium">₹{m.cost.toLocaleString("en-IN")}</span>
@@ -379,6 +508,39 @@ export function CNCOrders() {
                 </div>
               </div>
 
+              {(newOrder.advanceReceived || 0) > 0 && (
+                <div className="grid grid-cols-2 gap-4 p-3 bg-primary/5 rounded-lg border border-primary/10 animate-in fade-in slide-in-from-top-2">
+                  <div className="space-y-2">
+                    <Label className="text-xs">Payment Method</Label>
+                    <Select value={paymentMethod} onValueChange={(v: any) => setPaymentMethod(v)}>
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Cash">Cash</SelectItem>
+                        <SelectItem value="UPI">UPI</SelectItem>
+                        <SelectItem value="Bank">Bank Transfer</SelectItem>
+                        <SelectItem value="Card">Card</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {paymentMethod !== 'Cash' && (
+                    <div className="space-y-2">
+                      <Label className="text-xs">Received By</Label>
+                      <Select value={paymentAccount} onValueChange={(v: any) => setPaymentAccount(v)}>
+                        <SelectTrigger className="h-8 text-xs">
+                          <SelectValue placeholder="Select Account" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Kamal Jangid">Kamal Jangid</SelectItem>
+                          <SelectItem value="Hiralal Jangid">Hiralal Jangid</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                </div>
+              )}
+
               <Button onClick={handleAddOrder} className="w-full" disabled={!newOrder.clientId || !newOrder.designType || saving}>
                 {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                 Create Order
@@ -386,6 +548,27 @@ export function CNCOrders() {
             </div>
           </DialogContent>
         </Dialog>
+      </div>
+
+      {/* Search Box */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <Input
+          placeholder="Search by order number, client name, or design type..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="pl-10"
+        />
+        {searchQuery && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
+            onClick={() => setSearchQuery("")}
+          >
+            <X className="w-4 h-4" />
+          </Button>
+        )}
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -442,7 +625,7 @@ export function CNCOrders() {
                                 const mat = materials.find((mat) => (mat.id || mat._id) === m.materialId)
                                 return (
                                   <span key={idx} className="bg-background px-1.5 py-0.5 rounded border border-border/50">
-                                    {mat?.type || "Mat"} x{m.quantity}
+                                    {mat?.type || "Mat"} {m.width && m.height ? `[${m.width}x${m.height}]` : ""} x{m.quantity.toFixed(1)}
                                   </span>
                                 )
                               })}
@@ -460,12 +643,31 @@ export function CNCOrders() {
                           <p className="text-sm font-bold text-amber-600">
                             Due: ₹{(order.balanceAmount || 0).toLocaleString("en-IN")}
                           </p>
-                          <p className="text-[10px] text-muted-foreground">Adv: ₹{((order.totalValue || 0) - (order.balanceAmount || 0)).toLocaleString("en-IN")}</p>
+                          <p className="text-[10px] text-muted-foreground">Adv: ₹{(order.advanceReceived || 0).toLocaleString("en-IN")}</p>
                         </div>
                       </div>
                     </div>
 
-                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-3 pt-3 border-t border-border/50">
+                    {order.payments && order.payments.length > 0 && (
+                      <div className="px-4 py-2 bg-primary/5 border-y border-primary/10">
+                        <div className="flex flex-wrap gap-x-4 gap-y-1">
+                          {order.payments.map((p, idx) => (
+                            <div key={idx} className="flex items-center gap-1.5 text-[10px]">
+                              <span className="text-muted-foreground">{new Date(p.date).toLocaleDateString("en-IN")}:</span>
+                              <span className="font-bold">₹{p.amount.toLocaleString("en-IN")}</span>
+                              <span className="px-1.5 py-0.5 bg-background border border-border rounded uppercase font-bold text-[9px]">
+                                {p.method}
+                                {p.account && (
+                                  <span className="ml-1 text-primary">({p.account.split(' ')[0]})</span>
+                                )}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-3 pt-3">
                       <div className="flex-1 sm:flex-none">
                         <Select
                           value={order.status}
@@ -493,6 +695,20 @@ export function CNCOrders() {
                           <FileText className="w-4 h-4" />
                           Job Card
                         </Button>
+                        {order.balanceAmount > 0 && (
+                          <Button
+                            variant="default"
+                            size="sm"
+                            className="flex-1 sm:flex-none h-9 px-4 gap-2 bg-green-600 hover:bg-green-700"
+                            onClick={() => {
+                              setShowPaymentDialog(order)
+                              setPaymentAmount(order.balanceAmount)
+                            }}
+                          >
+                            <IndianRupee className="w-4 h-4" />
+                            Record Payment
+                          </Button>
+                        )}
                         <Button variant="outline" size="icon" className="h-9 w-9 text-destructive" onClick={() => handleDeleteOrder(orderId)}>
                           <Trash2 className="w-4 h-4" />
                         </Button>
@@ -554,13 +770,21 @@ export function CNCOrders() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border">
-                      {showJobCard.materials.map((m, idx) => {
+                      {showJobCard?.materials?.map((m, idx) => {
                         const mat = materials.find((mt) => (mt.id || mt._id) === m.materialId)
                         return (
                           <tr key={idx}>
                             <td className="p-3 font-bold">{mat?.type}</td>
-                            <td className="p-3 text-center">{mat?.size} @ {mat?.thickness}mm</td>
-                            <td className="p-3 text-right font-black text-lg">{m.quantity} Sheets</td>
+                            <td className="p-3 text-center">
+                              {m.width && m.height ? (
+                                <span className="font-bold text-primary">{m.width} x {m.height}</span>
+                              ) : mat?.size}
+                              <span className="text-muted-foreground ml-1">@ {mat?.thickness}mm</span>
+                            </td>
+                            <td className="p-3 text-right">
+                              <span className="font-black text-lg">{m.quantity.toFixed(2)}</span>
+                              <span className="text-xs text-muted-foreground ml-1">Sheets</span>
+                            </td>
                           </tr>
                         )
                       })}
@@ -568,6 +792,51 @@ export function CNCOrders() {
                   </table>
                 </div>
               </div>
+
+              {showJobCard?.payments && showJobCard.payments.length > 0 && (
+                <div className="space-y-3">
+                  <h4 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground px-1">Payment History</h4>
+                  <div className="border border-border rounded-xl overflow-hidden">
+                    <table className="w-full text-sm">
+                      <thead className="bg-muted text-[10px] uppercase font-bold text-muted-foreground">
+                        <tr>
+                          <th className="text-left p-3">Date</th>
+                          <th className="text-left p-3">Method</th>
+                          <th className="text-right p-3">Amount</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border">
+                        {showJobCard?.payments?.map((p, idx) => (
+                          <tr key={idx}>
+                            <td className="p-3">{new Date(p.date).toLocaleDateString("en-IN")}</td>
+                            <td className="p-3">
+                              {p.method}
+                              {p.account && (
+                                <span className="ml-2 px-1.5 py-0.5 bg-primary/10 text-primary text-[10px] font-bold rounded uppercase">
+                                  {p.account}
+                                </span>
+                              )}
+                            </td>
+                            <td className="p-3 text-right font-bold">₹{p.amount.toLocaleString("en-IN")}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot className="bg-muted/50">
+                        <tr>
+                          <td colSpan={2} className="p-3 text-right font-bold">Total Received</td>
+                          <td className="p-3 text-right font-black text-green-600">₹{(showJobCard?.advanceReceived || 0).toLocaleString("en-IN")}</td>
+                        </tr>
+                        {(showJobCard?.balanceAmount || 0) > 0 && (
+                          <tr>
+                            <td colSpan={2} className="p-3 text-right font-bold">Pending Balance</td>
+                            <td className="p-3 text-right font-black text-amber-600">₹{(showJobCard?.balanceAmount || 0).toLocaleString("en-IN")}</td>
+                          </tr>
+                        )}
+                      </tfoot>
+                    </table>
+                  </div>
+                </div>
+              )}
 
               <div className="grid grid-cols-2 gap-6 pt-4">
                 <div className="h-24 border-2 border-dashed border-border rounded-xl p-3">
@@ -583,6 +852,124 @@ export function CNCOrders() {
                 <Button onClick={handlePrint} className="gap-2">
                   <Printer className="w-4 h-4" />
                   Print Job Card
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Record Payment Dialog */}
+      <Dialog open={!!showPaymentDialog} onOpenChange={(o) => !o && setShowPaymentDialog(null)}>
+        <DialogContent className="max-w-md w-[95vw] rounded-2xl">
+          <DialogHeader>
+            <DialogTitle>Record Payment</DialogTitle>
+          </DialogHeader>
+
+          {showPaymentDialog && (
+            <div className="space-y-4 pt-4">
+              <div className="p-4 bg-muted rounded-lg space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span>Order Number:</span>
+                  <span className="font-bold">{showPaymentDialog?.orderNumber}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span>Client:</span>
+                  <span className="font-medium">{clients.find(c => (c.id || c._id) === showPaymentDialog.clientId)?.name || "Unknown"}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span>Total Value:</span>
+                  <span>₹{(showPaymentDialog?.totalValue || 0).toLocaleString("en-IN")}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span>Already Paid:</span>
+                  <span className="text-green-600">₹{(showPaymentDialog?.advanceReceived || 0).toLocaleString("en-IN")}</span>
+                </div>
+                <div className="flex justify-between text-sm font-bold border-t pt-2">
+                  <span>Pending Balance:</span>
+                  <span className="text-amber-600">₹{(showPaymentDialog?.balanceAmount || 0).toLocaleString("en-IN")}</span>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Payment Amount (₹)</Label>
+                <Input
+                  type="number"
+                  value={paymentAmount}
+                  onChange={(e) => setPaymentAmount(Math.min(Number(e.target.value), showPaymentDialog?.balanceAmount || 0))}
+                  max={showPaymentDialog?.balanceAmount}
+                  min={0}
+                  className="text-lg font-bold"
+                />
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPaymentAmount(Math.round((showPaymentDialog?.balanceAmount || 0) * 0.5))}
+                  >
+                    50%
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPaymentAmount(showPaymentDialog?.balanceAmount || 0)}
+                  >
+                    Full Amount
+                  </Button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Payment Method</Label>
+                  <Select value={paymentMethod} onValueChange={(v: any) => setPaymentMethod(v)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Cash">Cash</SelectItem>
+                      <SelectItem value="UPI">UPI</SelectItem>
+                      <SelectItem value="Bank">Bank Transfer</SelectItem>
+                      <SelectItem value="Card">Card</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                {paymentMethod !== 'Cash' && (
+                  <div className="space-y-2">
+                    <Label>Received By</Label>
+                    <Select value={paymentAccount} onValueChange={(v: any) => setPaymentAccount(v)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select Account" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Kamal Jangid">Kamal Jangid</SelectItem>
+                        <SelectItem value="Hiralal Jangid">Hiralal Jangid</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+              </div>
+
+              <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                <div className="flex justify-between text-sm">
+                  <span>New Balance After Payment:</span>
+                  <span className="font-bold text-green-700">
+                    ₹{Math.max(0, (showPaymentDialog.balanceAmount || 0) - paymentAmount).toLocaleString("en-IN")}
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <Button variant="outline" className="flex-1" onClick={() => setShowPaymentDialog(null)}>
+                  Cancel
+                </Button>
+                <Button
+                  className="flex-1 bg-green-600 hover:bg-green-700"
+                  onClick={handleRecordPayment}
+                  disabled={paymentAmount <= 0 || saving}
+                >
+                  {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                  Confirm Payment
                 </Button>
               </div>
             </div>
@@ -610,6 +997,6 @@ export function CNCOrders() {
           }
         }
       `}</style>
-    </div>
+    </div >
   )
 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import dbConnect from '@/lib/db/mongodb'
 import { InteriorClient } from '@/lib/models/interiors'
+import { interiorClientSchema, formatValidationErrors } from '@/lib/validations'
 
 // GET all clients
 export async function GET() {
@@ -19,7 +20,17 @@ export async function POST(request: NextRequest) {
     try {
         await dbConnect()
         const body = await request.json()
-        const client = await InteriorClient.create(body)
+
+        // Validate input
+        const validation = interiorClientSchema.safeParse(body)
+        if (!validation.success) {
+            return NextResponse.json(
+                { error: 'Validation failed', details: formatValidationErrors(validation.error) },
+                { status: 400 }
+            )
+        }
+
+        const client = await InteriorClient.create(validation.data)
         return NextResponse.json(client, { status: 201 })
     } catch (error) {
         console.error('Error creating client:', error)

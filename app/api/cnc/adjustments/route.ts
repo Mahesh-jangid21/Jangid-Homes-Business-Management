@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import dbConnect from '@/lib/db/mongodb'
 import { StockAdjustment, Material } from '@/lib/models/cnc-shop'
+import { stockAdjustmentSchema, formatValidationErrors } from '@/lib/validations'
 
 export async function GET() {
     try {
@@ -17,7 +18,17 @@ export async function POST(request: NextRequest) {
     try {
         await dbConnect()
         const body = await request.json()
-        const { materialId, newStock, reason, date } = body
+
+        // Validate input
+        const validation = stockAdjustmentSchema.safeParse(body)
+        if (!validation.success) {
+            return NextResponse.json(
+                { error: 'Validation failed', details: formatValidationErrors(validation.error) },
+                { status: 400 }
+            )
+        }
+
+        const { materialId, newStock, reason, date } = validation.data
 
         // Find material to get current stock
         const material = await Material.findById(materialId)
@@ -43,8 +54,9 @@ export async function POST(request: NextRequest) {
         await material.save()
 
         return NextResponse.json(adjustment, { status: 201 })
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('Error creating adjustment:', error)
-        return NextResponse.json({ error: error.message || 'Failed to create adjustment' }, { status: 500 })
+        const message = error instanceof Error ? error.message : 'Failed to create adjustment'
+        return NextResponse.json({ error: message }, { status: 500 })
     }
 }

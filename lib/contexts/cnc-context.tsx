@@ -43,10 +43,16 @@ export type Order = {
   date: string
   clientId: string
   designType: string
-  materials: { materialId: string; quantity: number; cost: number }[]
+  materials: { materialId: string; quantity: number; width?: number; height?: number; cost: number }[]
   labourCost: number
   totalValue: number
   advanceReceived: number
+  payments?: {
+    amount: number;
+    date: string;
+    method: 'Cash' | 'UPI' | 'Card' | 'Bank';
+    account?: 'Kamal Jangid' | 'Hiralal Jangid'
+  }[]
   balanceAmount: number
   deliveryDate: string
   status: "Pending" | "In Progress" | "Completed" | "Billed"
@@ -59,7 +65,8 @@ export type Expense = {
   type: "Raw Material" | "Labour" | "Electricity" | "Rent" | "Maintenance" | "Transport" | "Misc"
   description: string
   amount: number
-  paymentMode: "Cash" | "Bank" | "UPI"
+  paymentMode: "Cash" | "Bank" | "UPI" | "Card"
+  account?: "Kamal Jangid" | "Hiralal Jangid"
 }
 
 export type Wastage = {

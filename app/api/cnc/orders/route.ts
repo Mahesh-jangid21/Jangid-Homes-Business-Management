@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import dbConnect from '@/lib/db/mongodb'
 import { Order, Material } from '@/lib/models/cnc-shop'
+import { orderSchema } from '@/lib/validations'
 
 export async function GET() {
     try {
@@ -17,11 +18,21 @@ export async function POST(request: NextRequest) {
     try {
         await dbConnect()
         const body = await request.json()
-        const order = await Order.create(body)
+
+        // Validate input
+        const validation = orderSchema.safeParse(body)
+        if (!validation.success) {
+            return NextResponse.json(
+                { error: 'Validation failed', details: validation.error.errors },
+                { status: 400 }
+            )
+        }
+
+        const order = await Order.create(validation.data)
 
         // Deduct materials from inventory
-        if (body.materials && Array.isArray(body.materials)) {
-            for (const mat of body.materials) {
+        if (validation.data.materials && Array.isArray(validation.data.materials)) {
+            for (const mat of validation.data.materials) {
                 if (mat.materialId && mat.quantity) {
                     await Material.findByIdAndUpdate(mat.materialId, {
                         $inc: { currentStock: -mat.quantity }
@@ -36,3 +47,4 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Failed to create order' }, { status: 500 })
     }
 }
+

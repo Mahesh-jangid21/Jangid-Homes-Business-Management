@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import dbConnect from '@/lib/db/mongodb'
 import { InteriorExpense } from '@/lib/models/interiors'
+import { interiorExpenseSchema, formatValidationErrors } from '@/lib/validations'
 
 // GET all expenses
 export async function GET() {
@@ -19,7 +20,17 @@ export async function POST(request: NextRequest) {
     try {
         await dbConnect()
         const body = await request.json()
-        const expense = await InteriorExpense.create(body)
+
+        // Validate input
+        const validation = interiorExpenseSchema.safeParse(body)
+        if (!validation.success) {
+            return NextResponse.json(
+                { error: 'Validation failed', details: formatValidationErrors(validation.error) },
+                { status: 400 }
+            )
+        }
+
+        const expense = await InteriorExpense.create(validation.data)
         return NextResponse.json(expense, { status: 201 })
     } catch (error) {
         console.error('Error creating expense:', error)

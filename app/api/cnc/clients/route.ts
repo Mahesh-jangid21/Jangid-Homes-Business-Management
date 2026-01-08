@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import dbConnect from '@/lib/db/mongodb'
 import { CNCClient } from '@/lib/models/cnc-shop'
+import { cncClientSchema } from '@/lib/validations'
 
 export async function GET() {
     try {
@@ -17,10 +18,21 @@ export async function POST(request: NextRequest) {
     try {
         await dbConnect()
         const body = await request.json()
-        const client = await CNCClient.create(body)
+
+        // Validate input
+        const validation = cncClientSchema.safeParse(body)
+        if (!validation.success) {
+            return NextResponse.json(
+                { error: 'Validation failed', details: validation.error.errors },
+                { status: 400 }
+            )
+        }
+
+        const client = await CNCClient.create(validation.data)
         return NextResponse.json(client, { status: 201 })
     } catch (error) {
         console.error('Error creating client:', error)
         return NextResponse.json({ error: 'Failed to create client' }, { status: 500 })
     }
 }
+

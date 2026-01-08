@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import dbConnect from '@/lib/db/mongodb'
 import { Purchase, Material } from '@/lib/models/cnc-shop'
+import { purchaseSchema, formatValidationErrors } from '@/lib/validations'
 
 export async function GET() {
     try {
@@ -17,12 +18,22 @@ export async function POST(request: NextRequest) {
     try {
         await dbConnect()
         const body = await request.json()
-        const purchase = await Purchase.create(body)
+
+        // Validate input
+        const validation = purchaseSchema.safeParse(body)
+        if (!validation.success) {
+            return NextResponse.json(
+                { error: 'Validation failed', details: formatValidationErrors(validation.error) },
+                { status: 400 }
+            )
+        }
+
+        const purchase = await Purchase.create(validation.data)
 
         // Update material stock
-        if (body.materialId && body.quantity) {
-            await Material.findByIdAndUpdate(body.materialId, {
-                $inc: { currentStock: body.quantity }
+        if (validation.data.materialId && validation.data.quantity) {
+            await Material.findByIdAndUpdate(validation.data.materialId, {
+                $inc: { currentStock: validation.data.quantity }
             })
         }
 
