@@ -77,25 +77,33 @@ export function CNCExpenses() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+      <div className="flex items-center justify-center h-48">
+        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
       </div>
     )
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+    <div className="space-y-5">
+      {/* Header - matching dashboard style */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-bold text-foreground">Expenses</h2>
-          <p className="text-sm text-muted-foreground">Track your business expenses</p>
+          <h2 className="text-xl font-semibold text-foreground">Expenses</h2>
+          <span className="text-sm text-muted-foreground">
+            {filteredExpenses.length} expenses this month
+          </span>
         </div>
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
-          <Input type="month" value={filterMonth} onChange={(e) => setFilterMonth(e.target.value)} className="h-10 w-full sm:w-40" />
+        <div className="flex items-center gap-2">
+          <Input
+            type="month"
+            value={filterMonth}
+            onChange={(e) => setFilterMonth(e.target.value)}
+            className="h-9 w-36 text-sm"
+          />
           <Dialog open={showAddExpense} onOpenChange={setShowAddExpense}>
             <DialogTrigger asChild>
-              <Button className="w-full sm:w-auto">
-                <Plus className="w-4 h-4 mr-2" />
+              <Button size="sm" className="h-8 text-xs">
+                <Plus className="w-3.5 h-3.5 mr-1.5" />
                 Add Expense
               </Button>
             </DialogTrigger>
@@ -103,7 +111,7 @@ export function CNCExpenses() {
               <DialogHeader>
                 <DialogTitle>Add Expense</DialogTitle>
               </DialogHeader>
-              <div className="space-y-4 pt-4">
+              <form onSubmit={(e) => { e.preventDefault(); handleAddExpense(); }} className="space-y-4 pt-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Date</Label>
@@ -185,88 +193,109 @@ export function CNCExpenses() {
                     </Select>
                   </div>
                 )}
-                <Button onClick={handleAddExpense} className="w-full" disabled={!newExpense.amount || saving}>
+                <Button type="submit" className="w-full" disabled={!newExpense.amount || saving}>
                   {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                   Add Expense
                 </Button>
-              </div>
+              </form>
             </DialogContent>
           </Dialog>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="py-4">
-            <p className="text-sm text-muted-foreground">Total Expenses</p>
-            <p className="text-2xl font-bold">₹{(totalExpenses || 0).toLocaleString("en-IN")}</p>
+      {/* Stats Grid - matching dashboard style */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <Card className="border shadow-sm">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 text-red-600 mb-1.5">
+              <Receipt className="w-4 h-4" />
+              <span className="text-[10px] font-medium uppercase">Total</span>
+            </div>
+            <p className="text-lg font-bold text-red-600">₹{(totalExpenses || 0).toLocaleString("en-IN")}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{filteredExpenses.length} expenses</p>
           </CardContent>
         </Card>
         {Object.entries(expensesByType)
           .filter(([, amount]) => amount > 0)
           .slice(0, 3)
           .map(([type, amount]) => (
-            <Card key={type}>
-              <CardContent className="py-4">
-                <p className="text-sm text-muted-foreground">{type}</p>
-                <p className="text-2xl font-bold">₹{(amount || 0).toLocaleString("en-IN")}</p>
+            <Card key={type} className="border shadow-sm">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 text-muted-foreground mb-1.5">
+                  <span className="text-[10px] font-medium uppercase">{type}</span>
+                </div>
+                <p className="text-lg font-bold text-foreground">₹{(amount || 0).toLocaleString("en-IN")}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {Math.round((amount / totalExpenses) * 100)}% of total
+                </p>
               </CardContent>
             </Card>
           ))}
       </div>
 
-      {
-        filteredExpenses.length === 0 ? (
-          <Card>
-            <CardContent className="py-12 text-center">
-              <Receipt className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-              <p className="text-muted-foreground">No expenses recorded for this month.</p>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="grid gap-3">
-            {filteredExpenses.map((expense) => {
-              const expenseId = expense.id || expense._id || ""
-              return (
-                <Card key={expenseId} className="overflow-hidden">
-                  <CardContent className="p-0">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 gap-4">
-                      <div className="flex items-start gap-4">
-                        <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center shrink-0">
-                          <Receipt className="w-5 h-5 text-red-600" />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="font-bold text-base truncate">{expense.description || "No description"}</p>
-                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-xs text-muted-foreground">
-                            <span className="px-1.5 py-0.5 bg-muted rounded text-[10px] font-bold uppercase">{expense.type}</span>
-                            <span>{expense.date ? new Date(expense.date).toLocaleDateString("en-IN") : "No date"}</span>
-                          </div>
-                        </div>
+      {/* Expense Cards */}
+      {filteredExpenses.length === 0 ? (
+        <Card className="border shadow-sm">
+          <CardContent className="py-10 text-center">
+            <Receipt className="w-10 h-10 mx-auto text-muted-foreground mb-3" />
+            <p className="text-sm text-muted-foreground">No expenses recorded for this month</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid gap-3">
+          {filteredExpenses.map((expense) => {
+            const expenseId = expense.id || expense._id || ""
+            return (
+              <Card key={expenseId} className="border shadow-sm hover:shadow-md transition-all">
+                <CardContent className="p-4">
+                  <div className="flex items-start gap-3">
+                    {/* Icon */}
+                    <div className="w-10 h-10 bg-red-100 dark:bg-red-950/30 rounded-full flex items-center justify-center shrink-0">
+                      <Receipt className="w-4 h-4 text-red-600 dark:text-red-400" />
+                    </div>
+
+                    {/* Info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="text-base font-semibold text-foreground truncate">
+                          {expense.description || "No description"}
+                        </p>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-medium uppercase tracking-wide bg-muted text-muted-foreground">
+                          {expense.type}
+                        </span>
                       </div>
-                      <div className="flex items-center justify-between sm:justify-end gap-6 pt-3 sm:pt-0 border-t sm:border-t-0 border-border/50">
-                        <div className="text-left sm:text-right">
-                          <p className="text-lg md:text-xl font-black text-red-600">-₹{(expense.amount || 0).toLocaleString("en-IN")}</p>
-                          <div className="flex items-center justify-end gap-2 text-[10px] text-muted-foreground font-bold uppercase tracking-widest">
-                            <span>{expense.paymentMode}</span>
-                            {expense.account && (
-                              <span className="px-1.5 py-0.5 bg-red-50 text-red-600 border border-red-100 rounded">
-                                {expense.account.split(' ')[0]}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        <Button variant="outline" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleDeleteExpense(expenseId)}>
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </Button>
+                      <div className="flex flex-wrap items-center gap-3 mt-1 text-xs text-muted-foreground">
+                        <span>{expense.date ? new Date(expense.date).toLocaleDateString("en-IN", { day: "numeric", month: "short" }) : "No date"}</span>
+                        <span className="flex items-center gap-1">
+                          {expense.paymentMode}
+                          {expense.account && expense.paymentMode !== 'Cash' && (
+                            <span className="text-primary font-medium">→ {expense.account}</span>
+                          )}
+                        </span>
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
-              )
-            })}
-          </div>
-        )
-      }
+
+                    {/* Amount & Actions */}
+                    <div className="flex items-center gap-3">
+                      <div className="text-right">
+                        <p className="text-lg font-bold text-red-600">-₹{(expense.amount || 0).toLocaleString("en-IN")}</p>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                        onClick={() => handleDeleteExpense(expenseId)}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )
+          })}
+        </div>
+      )}
     </div >
   )
 }

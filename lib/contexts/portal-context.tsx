@@ -15,7 +15,7 @@ export type Business = {
 export const businesses: Business[] = [
   {
     id: "cnc-shop",
-    name: "CNC Shop",
+    name: "Shri Shyam CNC",
     description: "CNC cutting & manufacturing",
     icon: "Scissors",
     color: "bg-amber-500",

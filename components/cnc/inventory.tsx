@@ -165,24 +165,27 @@ export function CNCInventory() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+      <div className="flex items-center justify-center h-48">
+        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
       </div>
     )
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+    <div className="space-y-5">
+      {/* Header - matching dashboard style */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-bold text-foreground">Inventory</h2>
-          <p className="text-sm text-muted-foreground">Manage your sheets and materials</p>
+          <h2 className="text-xl font-semibold text-foreground">Inventory</h2>
+          <span className="text-sm text-muted-foreground">
+            {materials.length} materials tracked
+          </span>
         </div>
-        <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+        <div className="flex items-center gap-2">
           <Dialog open={showAddMaterial} onOpenChange={setShowAddMaterial}>
             <DialogTrigger asChild>
-              <Button className="flex-1 sm:flex-none">
-                <Plus className="w-4 h-4 mr-2" />
+              <Button size="sm" className="h-8 text-xs">
+                <Plus className="w-3.5 h-3.5 mr-1.5" />
                 Material
               </Button>
             </DialogTrigger>
@@ -278,8 +281,8 @@ export function CNCInventory() {
 
           <Dialog open={showAddPurchase} onOpenChange={setShowAddPurchase}>
             <DialogTrigger asChild>
-              <Button variant="outline" className="flex-1 sm:flex-none">
-                <ShoppingCart className="w-4 h-4 mr-2" />
+              <Button variant="outline" size="sm" className="h-8 text-xs">
+                <ShoppingCart className="w-3.5 h-3.5 mr-1.5" />
                 Purchase
               </Button>
             </DialogTrigger>
@@ -362,8 +365,8 @@ export function CNCInventory() {
 
           <Dialog open={showAddWastage} onOpenChange={setShowAddWastage}>
             <DialogTrigger asChild>
-              <Button variant="outline" className="flex-1 sm:flex-none">
-                <Trash2 className="w-4 h-4 mr-2" />
+              <Button variant="outline" size="sm" className="h-8 text-xs">
+                <Trash2 className="w-3.5 h-3.5 mr-1.5" />
                 Wastage
               </Button>
             </DialogTrigger>
@@ -429,68 +432,73 @@ export function CNCInventory() {
         </div>
       </div>
 
+      {/* Inventory Tabs */}
       <Tabs defaultValue="stock">
-        <TabsList>
-          <TabsTrigger value="stock">Current Stock</TabsTrigger>
-          <TabsTrigger value="purchases">Purchase History</TabsTrigger>
-          <TabsTrigger value="wastage">Wastage Log</TabsTrigger>
-          <TabsTrigger value="adjustments">Audit Logs</TabsTrigger>
+        <TabsList className="h-9 p-1 overflow-x-auto">
+          <TabsTrigger value="stock" className="text-xs px-3 h-7">Stock</TabsTrigger>
+          <TabsTrigger value="purchases" className="text-xs px-3 h-7">Purchases</TabsTrigger>
+          <TabsTrigger value="wastage" className="text-xs px-3 h-7">Wastage</TabsTrigger>
+          <TabsTrigger value="adjustments" className="text-xs px-3 h-7">Audits</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="stock" className="mt-4">
+        <TabsContent value="stock" className="mt-4 space-y-3">
           {materials.length === 0 ? (
-            <Card>
-              <CardContent className="py-12 text-center">
-                <Package className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-                <p className="text-muted-foreground">No materials added yet.</p>
-                <p className="text-sm text-muted-foreground">Click "Add Material" to get started.</p>
+            <Card className="border shadow-sm">
+              <CardContent className="py-10 text-center">
+                <Package className="w-10 h-10 mx-auto text-muted-foreground mb-3" />
+                <p className="text-sm text-muted-foreground">No materials added yet</p>
               </CardContent>
             </Card>
           ) : (
             <div className="grid gap-3">
               {materials.map((m) => (
-                <Card key={m.id} className={cn("overflow-hidden", m.currentStock <= m.lowStockAlert ? "border-amber-300 bg-amber-50/10" : "")}>
+                <Card key={m.id} className={cn(
+                  "border shadow-sm hover:shadow-md transition-all",
+                  m.currentStock <= m.lowStockAlert && "border-amber-300 bg-amber-50/30 dark:bg-amber-950/10"
+                )}>
                   <CardContent className="p-4">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 md:w-12 md:h-12 bg-primary/10 rounded-lg flex items-center justify-center shrink-0">
-                          <Package className="w-5 h-5 md:w-6 md:h-6 text-primary" />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <h3 className="font-bold text-base md:text-lg truncate">
-                            {m.type} - {m.size}
-                          </h3>
-                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs md:text-sm text-muted-foreground">
-                            <span>{m.thickness}mm</span>
-                            <span className="hidden md:inline">•</span>
-                            <span>₹{m.rate.toLocaleString("en-IN")}/sheet</span>
-                          </div>
-                        </div>
+                    <div className="flex items-start gap-3">
+                      {/* Icon */}
+                      <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center shrink-0">
+                        <Package className="w-4 h-4 text-primary" />
                       </div>
-                      <div className="flex items-center justify-between sm:justify-end gap-6 pt-3 sm:pt-0 border-t sm:border-t-0 border-border/50">
-                        <div className="text-left sm:text-right">
-                          <p className="text-xl md:text-2xl font-black leading-none">{m.currentStock}</p>
-                          <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mt-1">Sheets Left</p>
+
+                      {/* Info */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h3 className="text-base font-semibold text-foreground">{m.type}</h3>
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-medium uppercase tracking-wide bg-muted text-muted-foreground">
+                            {m.size} • {m.thickness}mm
+                          </span>
                         </div>
-                        <div className="flex items-center gap-2">
-                          {m.currentStock <= m.lowStockAlert && (
-                            <span className="px-2 py-0.5 bg-amber-100 text-amber-800 text-[10px] font-bold rounded uppercase tracking-wider">Low</span>
-                          )}
+                        <p className="text-xs text-muted-foreground mt-0.5">₹{m.rate.toLocaleString("en-IN")}/sheet</p>
+                      </div>
+
+                      {/* Stock & Actions */}
+                      <div className="flex items-center gap-3">
+                        <div className="text-right">
+                          <p className="text-lg font-bold text-foreground">{m.currentStock}</p>
+                          <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">sheets</p>
+                        </div>
+                        {m.currentStock <= m.lowStockAlert && (
+                          <span className="px-2 py-0.5 bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-400 text-[10px] font-medium uppercase rounded-full">Low</span>
+                        )}
+                        <div className="flex items-center gap-1">
                           <Button
-                            variant="outline"
+                            variant="ghost"
                             size="icon"
-                            className="h-8 w-8 text-primary border-primary/20 hover:bg-primary/5"
+                            className="h-8 w-8 text-primary hover:bg-primary/10"
                             onClick={() => {
                               setShowReconcile(m.id || null)
                               setAuditData({ ...auditData, newStock: m.currentStock })
                             }}
                           >
-                            <ClipboardCheck className="w-4 h-4" />
+                            <ClipboardCheck className="w-3.5 h-3.5" />
                           </Button>
                           <Button
-                            variant="outline"
+                            variant="ghost"
                             size="icon"
-                            className="h-8 w-8 text-destructive border-destructive/20 hover:bg-destructive/5"
+                            className="h-8 w-8 text-muted-foreground hover:text-destructive"
                             onClick={() => handleDeleteMaterial(m.id || "")}
                           >
                             <Trash2 className="w-3.5 h-3.5" />
@@ -547,12 +555,12 @@ export function CNCInventory() {
           )}
         </TabsContent>
 
-        <TabsContent value="purchases" className="mt-4">
+        <TabsContent value="purchases" className="mt-4 space-y-3">
           {purchases.length === 0 ? (
-            <Card>
-              <CardContent className="py-12 text-center">
-                <ShoppingCart className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-                <p className="text-muted-foreground">No purchases recorded yet.</p>
+            <Card className="border shadow-sm">
+              <CardContent className="py-10 text-center">
+                <ShoppingCart className="w-10 h-10 mx-auto text-muted-foreground mb-3" />
+                <p className="text-sm text-muted-foreground">No purchases recorded yet</p>
               </CardContent>
             </Card>
           ) : (
@@ -560,17 +568,29 @@ export function CNCInventory() {
               {purchases.map((p) => {
                 const material = materials.find((m) => m.id === p.materialId)
                 return (
-                  <Card key={p.id}>
+                  <Card key={p.id} className="border shadow-sm hover:shadow-md transition-all">
                     <CardContent className="p-4">
-                      <div className="flex justify-between items-start mb-3">
-                        <div>
-                          <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">{p.date ? new Date(p.date).toLocaleDateString("en-IN") : "No date"}</p>
-                          <h3 className="font-bold text-base mt-0.5">{material ? `${material.type} - ${material.size}` : "Unknown"}</h3>
-                          <p className="text-xs text-muted-foreground">{p.supplier}</p>
+                      <div className="flex items-start gap-3">
+                        <div className="w-10 h-10 bg-green-100 dark:bg-green-950/30 rounded-full flex items-center justify-center shrink-0">
+                          <ShoppingCart className="w-4 h-4 text-green-600 dark:text-green-400" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h3 className="text-base font-semibold text-foreground">
+                              {material ? `${material.type} - ${material.size}` : "Unknown"}
+                            </h3>
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-medium uppercase tracking-wide bg-muted text-muted-foreground">
+                              {p.quantity} sheets
+                            </span>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-3 mt-1 text-xs text-muted-foreground">
+                            <span>{p.date ? new Date(p.date).toLocaleDateString("en-IN", { day: "numeric", month: "short" }) : "No date"}</span>
+                            {p.supplier && <span>{p.supplier}</span>}
+                          </div>
                         </div>
                         <div className="text-right">
-                          <p className="text-base font-black">₹{p.total.toLocaleString("en-IN")}</p>
-                          <p className="text-[10px] text-muted-foreground font-bold mt-0.5">{p.quantity} sheets @ ₹{p.rate}</p>
+                          <p className="text-lg font-bold text-green-600">₹{p.total.toLocaleString("en-IN")}</p>
+                          <p className="text-xs text-muted-foreground">@₹{p.rate}/sheet</p>
                         </div>
                       </div>
                     </CardContent>
@@ -581,12 +601,12 @@ export function CNCInventory() {
           )}
         </TabsContent>
 
-        <TabsContent value="wastage" className="mt-4">
+        <TabsContent value="wastage" className="mt-4 space-y-3">
           {wastages.length === 0 ? (
-            <Card>
-              <CardContent className="py-12 text-center">
-                <Trash2 className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-                <p className="text-muted-foreground">No wastage recorded yet.</p>
+            <Card className="border shadow-sm">
+              <CardContent className="py-10 text-center">
+                <Trash2 className="w-10 h-10 mx-auto text-muted-foreground mb-3" />
+                <p className="text-sm text-muted-foreground">No wastage recorded yet</p>
               </CardContent>
             </Card>
           ) : (
@@ -594,17 +614,26 @@ export function CNCInventory() {
               {wastages.map((w) => {
                 const material = materials.find((m) => m.id === w.materialId)
                 return (
-                  <Card key={w.id}>
+                  <Card key={w.id} className="border shadow-sm hover:shadow-md transition-all">
                     <CardContent className="p-4">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">{new Date(w.date).toLocaleDateString("en-IN")}</p>
-                          <h3 className="font-bold text-base mt-0.5">{material ? `${material.type} - ${material.size}` : "Unknown"}</h3>
-                          <p className="text-xs text-amber-700 font-medium mt-1 italic">Reason: {w.reason}</p>
+                      <div className="flex items-start gap-3">
+                        <div className="w-10 h-10 bg-amber-100 dark:bg-amber-950/30 rounded-full flex items-center justify-center shrink-0">
+                          <Trash2 className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h3 className="text-base font-semibold text-foreground">
+                              {material ? `${material.type} - ${material.size}` : "Unknown"}
+                            </h3>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-3 mt-1 text-xs text-muted-foreground">
+                            <span>{new Date(w.date).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}</span>
+                            <span className="text-amber-600">{w.reason}</span>
+                          </div>
                         </div>
                         <div className="text-right">
-                          <p className="text-base font-black text-amber-600">{w.quantity} sheets</p>
-                          <p className="text-[10px] text-muted-foreground font-bold mt-0.5 uppercase tracking-wider">Wastage</p>
+                          <p className="text-lg font-bold text-amber-600">-{w.quantity}</p>
+                          <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">sheets</p>
                         </div>
                       </div>
                     </CardContent>
@@ -615,12 +644,12 @@ export function CNCInventory() {
           )}
         </TabsContent>
 
-        <TabsContent value="adjustments" className="mt-4">
+        <TabsContent value="adjustments" className="mt-4 space-y-3">
           {adjustments.length === 0 ? (
-            <Card>
-              <CardContent className="py-12 text-center">
-                <History className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-                <p className="text-muted-foreground">No audit adjustments yet.</p>
+            <Card className="border shadow-sm">
+              <CardContent className="py-10 text-center">
+                <History className="w-10 h-10 mx-auto text-muted-foreground mb-3" />
+                <p className="text-sm text-muted-foreground">No audit adjustments yet</p>
               </CardContent>
             </Card>
           ) : (
@@ -628,19 +657,34 @@ export function CNCInventory() {
               {adjustments.map((a) => {
                 const material = materials.find((m) => m.id === a.materialId)
                 return (
-                  <Card key={a.id}>
+                  <Card key={a.id} className="border shadow-sm hover:shadow-md transition-all">
                     <CardContent className="p-4">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">{new Date(a.date).toLocaleDateString("en-IN")}</p>
-                          <h3 className="font-bold text-base mt-0.5">{material ? `${material.type} - ${material.size}` : "Unknown"}</h3>
-                          <p className="text-xs text-muted-foreground italic">Note: {a.reason}</p>
+                      <div className="flex items-start gap-3">
+                        <div className={cn(
+                          "w-10 h-10 rounded-full flex items-center justify-center shrink-0",
+                          a.adjustment > 0 ? "bg-green-100 dark:bg-green-950/30" : "bg-amber-100 dark:bg-amber-950/30"
+                        )}>
+                          <History className={cn("w-4 h-4", a.adjustment > 0 ? "text-green-600 dark:text-green-400" : "text-amber-600 dark:text-amber-400")} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h3 className="text-base font-semibold text-foreground">
+                              {material ? `${material.type} - ${material.size}` : "Unknown"}
+                            </h3>
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-medium uppercase tracking-wide bg-muted text-muted-foreground">
+                              Audit
+                            </span>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-3 mt-1 text-xs text-muted-foreground">
+                            <span>{new Date(a.date).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}</span>
+                            <span>{a.reason}</span>
+                          </div>
                         </div>
                         <div className="text-right">
-                          <p className={cn("text-base font-black", a.adjustment > 0 ? "text-green-600" : "text-amber-600")}>
-                            {a.adjustment > 0 ? "+" : ""}{a.adjustment} sheets
+                          <p className={cn("text-lg font-bold", a.adjustment > 0 ? "text-green-600" : "text-amber-600")}>
+                            {a.adjustment > 0 ? "+" : ""}{a.adjustment}
                           </p>
-                          <p className="text-[10px] text-muted-foreground font-bold mt-0.5 uppercase tracking-wider">Correction</p>
+                          <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">sheets</p>
                         </div>
                       </div>
                     </CardContent>

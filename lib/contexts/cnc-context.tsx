@@ -23,6 +23,8 @@ export type Purchase = {
   quantity: number
   rate: number
   total: number
+  paymentMethod?: 'Cash' | 'UPI' | 'Card' | 'Bank'
+  paidBy?: 'Kamal Jangid' | 'Hiralal Jangid'
 }
 
 export type Client = {

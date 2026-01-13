@@ -1,16 +1,21 @@
 "use client"
 
 import { useCNC } from "@/lib/contexts/cnc-context"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Package, Users, ClipboardList, TrendingUp, AlertTriangle, IndianRupee, Loader2 } from "lucide-react"
+import { Card, CardContent } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Package, Users, ClipboardList, TrendingUp, AlertTriangle, IndianRupee, Loader2, Plus, Receipt } from "lucide-react"
 
-export function CNCDashboard() {
-  const { materials, clients, orders, expenses, loading } = useCNC()
+interface CNCDashboardProps {
+  onNavigate?: (module: string) => void
+}
+
+export function CNCDashboard({ onNavigate }: CNCDashboardProps) {
+  const { materials, clients, orders, loading } = useCNC()
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+      <div className="flex items-center justify-center h-48">
+        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
       </div>
     )
   }
@@ -18,137 +23,138 @@ export function CNCDashboard() {
   const today = new Date().toISOString().split("T")[0]
   const thisMonth = new Date().toISOString().slice(0, 7)
 
-  const todayOrders = orders.filter((o) => {
-    if (!o.date) return false
-    return o.date.startsWith(today)
-  })
+  const todayOrders = orders.filter((o) => o.date?.startsWith(today))
   const todaySales = todayOrders.reduce((sum, o) => sum + o.totalValue, 0)
 
-  const monthOrders = orders.filter((o) => {
-    if (!o.date) return false
-    return o.date.startsWith(thisMonth)
-  })
+  const monthOrders = orders.filter((o) => o.date?.startsWith(thisMonth))
   const monthSales = monthOrders.reduce((sum, o) => sum + o.totalValue, 0)
-  const monthExpenses = expenses.filter((e) => e.date.startsWith(thisMonth)).reduce((sum, e) => sum + e.amount, 0)
-  const monthMaterialCost = monthOrders.reduce((sum, o) => sum + o.materials.reduce((s, m) => s + m.cost, 0), 0)
-  const monthProfit = monthSales - monthExpenses - monthMaterialCost
 
   const lowStockItems = materials.filter((m) => m.currentStock <= m.lowStockAlert)
   const pendingOrders = orders.filter((o) => o.status === "Pending" || o.status === "In Progress")
   const pendingPayments = orders.filter((o) => o.balanceAmount > 0).reduce((sum, o) => sum + o.balanceAmount, 0)
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="space-y-5">
+      {/* Header with Quick Actions */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-bold text-foreground">Dashboard</h2>
-          <p className="text-muted-foreground">Welcome back! Here's your CNC business overview.</p>
+          <h2 className="text-xl font-semibold text-foreground">Dashboard</h2>
+          <span className="text-sm text-muted-foreground">
+            {new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+          </span>
         </div>
-        <div className="flex items-center gap-2 text-[10px] md:text-sm font-semibold text-primary bg-primary/5 px-2.5 py-1 md:px-3 md:py-1.5 rounded-lg border border-primary/10">
-          <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-primary rounded-full" />
-          Live Overview
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 text-xs"
+            onClick={() => onNavigate?.("expenses")}
+          >
+            <Receipt className="w-3.5 h-3.5 mr-1.5" />
+            Add Expense
+          </Button>
+          <Button
+            size="sm"
+            className="h-8 text-xs"
+            onClick={() => onNavigate?.("orders")}
+          >
+            <Plus className="w-3.5 h-3.5 mr-1.5" />
+            New Order
+          </Button>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
-        <Card className="hover-lift border border-border">
-          <CardHeader className="flex flex-row items-center justify-between pb-1 md:pb-2 p-3 md:p-6">
-            <CardTitle className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Today</CardTitle>
-            <IndianRupee className="w-3.5 h-3.5 text-primary" />
-          </CardHeader>
-          <CardContent className="p-3 md:p-6 pt-0 md:pt-0">
-            <div className="text-lg md:text-2xl font-bold">₹{(todaySales || 0).toLocaleString("en-IN")}</div>
-            <p className="text-[10px] text-muted-foreground mt-0.5">{todayOrders.length} orders</p>
-          </CardContent>
-        </Card>
-
-        <Card className="hover-lift border border-border">
-          <CardHeader className="flex flex-row items-center justify-between pb-1 md:pb-2 p-3 md:p-6">
-            <CardTitle className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Month</CardTitle>
-            <TrendingUp className="w-3.5 h-3.5 text-emerald-600" />
-          </CardHeader>
-          <CardContent className="p-3 md:p-6 pt-0 md:pt-0">
-            <div className="text-lg md:text-2xl font-bold">₹{(monthSales || 0).toLocaleString("en-IN")}</div>
-            <p className="text-[10px] text-muted-foreground mt-0.5">{monthOrders.length} orders</p>
-          </CardContent>
-        </Card>
-
-        <Card className="hover-lift border border-border">
-          <CardHeader className="flex flex-row items-center justify-between pb-1 md:pb-2 p-3 md:p-6">
-            <CardTitle className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Profit</CardTitle>
-            <TrendingUp className={`w-3.5 h-3.5 ${monthProfit >= 0 ? "text-green-600" : "text-red-600"}`} />
-          </CardHeader>
-          <CardContent className="p-3 md:p-6 pt-0 md:pt-0">
-            <div className={`text-lg md:text-2xl font-bold ${monthProfit >= 0 ? "text-green-600" : "text-red-600"}`}>
-              ₹{(monthProfit || 0).toLocaleString("en-IN")}
+      {/* Main Stats Grid */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+        <Card className="border shadow-sm">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 text-muted-foreground mb-1.5">
+              <IndianRupee className="w-4 h-4" />
+              <span className="text-[10px] font-medium uppercase">Today</span>
             </div>
-            <p className="text-[10px] text-muted-foreground mt-0.5">Net</p>
+            <p className="text-lg font-bold text-foreground">₹{(todaySales || 0).toLocaleString("en-IN")}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{todayOrders.length} orders</p>
           </CardContent>
         </Card>
 
-        <Card className="hover-lift border border-border">
-          <CardHeader className="flex flex-row items-center justify-between pb-1 md:pb-2 p-3 md:p-6">
-            <CardTitle className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Payments</CardTitle>
-            <IndianRupee className="w-3.5 h-3.5 text-amber-600" />
-          </CardHeader>
-          <CardContent className="p-3 md:p-6 pt-0 md:pt-0">
-            <div className="text-lg md:text-2xl font-bold text-amber-600">₹{(pendingPayments || 0).toLocaleString("en-IN")}</div>
-            <p className="text-[10px] text-muted-foreground mt-0.5">Pending</p>
+        <Card className="border shadow-sm">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 text-muted-foreground mb-1.5">
+              <TrendingUp className="w-4 h-4" />
+              <span className="text-[10px] font-medium uppercase">Month</span>
+            </div>
+            <p className="text-lg font-bold text-foreground">₹{(monthSales || 0).toLocaleString("en-IN")}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{monthOrders.length} orders</p>
+          </CardContent>
+        </Card>
+
+        <Card
+          className="border shadow-sm cursor-pointer hover:border-amber-300 hover:shadow-md transition-all"
+          onClick={() => onNavigate?.("orders")}
+        >
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 text-amber-600 mb-1.5">
+              <IndianRupee className="w-4 h-4" />
+              <span className="text-[10px] font-medium uppercase">Pending</span>
+            </div>
+            <p className="text-lg font-bold text-amber-600">₹{(pendingPayments || 0).toLocaleString("en-IN")}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">to collect</p>
+          </CardContent>
+        </Card>
+
+        <Card className="border shadow-sm">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 text-muted-foreground mb-1.5">
+              <Package className="w-4 h-4" />
+              <span className="text-[10px] font-medium uppercase">Stock</span>
+            </div>
+            <p className="text-lg font-bold text-foreground">{materials.length}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">items</p>
+          </CardContent>
+        </Card>
+
+        <Card
+          className="border shadow-sm cursor-pointer hover:border-primary/50 hover:shadow-md transition-all"
+          onClick={() => onNavigate?.("clients")}
+        >
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 text-muted-foreground mb-1.5">
+              <Users className="w-4 h-4" />
+              <span className="text-[10px] font-medium uppercase">Clients</span>
+            </div>
+            <p className="text-lg font-bold text-foreground">{clients.length}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">registered</p>
+          </CardContent>
+        </Card>
+
+        <Card
+          className="border shadow-sm cursor-pointer hover:border-primary/50 hover:shadow-md transition-all"
+          onClick={() => onNavigate?.("orders")}
+        >
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 text-muted-foreground mb-1.5">
+              <ClipboardList className="w-4 h-4" />
+              <span className="text-[10px] font-medium uppercase">Orders</span>
+            </div>
+            <p className="text-lg font-bold text-foreground">{pendingOrders.length}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">pending</p>
           </CardContent>
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
-        <Card className="border border-border">
-          <CardHeader className="flex flex-row items-center justify-between pb-1 md:pb-2 p-4 md:p-6">
-            <CardTitle className="text-xs font-medium text-muted-foreground">Inventory</CardTitle>
-            <Package className="w-4 h-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent className="p-4 md:p-6 pt-0 md:pt-0">
-            <div className="text-xl md:text-2xl font-bold">{materials.length}</div>
-            <p className="text-[10px] text-muted-foreground">Items</p>
-          </CardContent>
-        </Card>
-
-        <Card className="border border-border">
-          <CardHeader className="flex flex-row items-center justify-between pb-1 md:pb-2 p-4 md:p-6">
-            <CardTitle className="text-xs font-medium text-muted-foreground">Clients</CardTitle>
-            <Users className="w-4 h-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent className="p-4 md:p-6 pt-0 md:pt-0">
-            <div className="text-xl md:text-2xl font-bold">{clients.length}</div>
-            <p className="text-[10px] text-muted-foreground">Registered</p>
-          </CardContent>
-        </Card>
-
-        <Card className="border border-border">
-          <CardHeader className="flex flex-row items-center justify-between pb-1 md:pb-2 p-4 md:p-6">
-            <CardTitle className="text-xs font-medium text-muted-foreground">Pending</CardTitle>
-            <ClipboardList className="w-4 h-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent className="p-4 md:p-6 pt-0 md:pt-0">
-            <div className="text-xl md:text-2xl font-bold">{pendingOrders.length}</div>
-            <p className="text-[10px] text-muted-foreground">Orders</p>
-          </CardContent>
-        </Card>
-      </div>
-
+      {/* Low Stock Alert */}
       {lowStockItems.length > 0 && (
-        <Card className="border-amber-200 bg-amber-50">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-amber-800 flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4" />
-              Low Stock Alert
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {lowStockItems.map((m) => (
+        <Card className="border border-amber-300 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 mb-2.5">
+              <AlertTriangle className="w-4 h-4 text-amber-600" />
+              <span className="text-sm font-medium text-amber-800 dark:text-amber-400">Low Stock</span>
+            </div>
+            <div className="space-y-1.5">
+              {lowStockItems.slice(0, 3).map((m) => (
                 <div key={m.id} className="flex justify-between text-sm">
-                  <span className="text-amber-900">
-                    {m.type} - {m.size} ({m.thickness}mm)
-                  </span>
-                  <span className="font-medium text-amber-800">{m.currentStock} sheets left</span>
+                  <span className="text-amber-800 dark:text-amber-300">{m.type} - {m.size}</span>
+                  <span className="font-medium text-amber-700 dark:text-amber-400">{m.currentStock} left</span>
                 </div>
               ))}
             </div>
@@ -156,27 +162,29 @@ export function CNCDashboard() {
         </Card>
       )}
 
+      {/* Pending Orders */}
       {pendingOrders.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Pending Orders</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
+        <Card className="border shadow-sm">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <ClipboardList className="w-4 h-4 text-muted-foreground" />
+              <span className="text-sm font-medium text-foreground">Pending Orders</span>
+            </div>
+            <div className="space-y-2">
               {pendingOrders.slice(0, 5).map((order) => {
                 const client = clients.find((c) => c.id === order.clientId)
                 return (
-                  <div key={order.id} className="flex justify-between items-center p-3 bg-muted rounded-lg">
+                  <div key={order.id} className="flex justify-between items-center text-sm py-2 border-b border-border last:border-0">
                     <div>
-                      <p className="font-medium">{order.orderNumber}</p>
-                      <p className="text-sm text-muted-foreground">{client?.name || "Unknown"}</p>
+                      <p className="font-medium text-foreground">{order.orderNumber}</p>
+                      <p className="text-muted-foreground text-xs">{client?.name || "Unknown"}</p>
                     </div>
-                    <div className="text-right">
-                      <p className="font-medium">₹{order.totalValue.toLocaleString("en-IN")}</p>
-                      <span
-                        className={`text-xs px-2 py-1 rounded ${order.status === "Pending" ? "bg-amber-100 text-amber-800" : "bg-blue-100 text-blue-800"
-                          }`}
-                      >
+                    <div className="text-right flex items-center gap-2">
+                      <span className="font-medium text-foreground">₹{order.totalValue.toLocaleString("en-IN")}</span>
+                      <span className={`text-xs px-2 py-0.5 rounded font-medium ${order.status === "Pending"
+                        ? "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300"
+                        : "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300"
+                        }`}>
                         {order.status}
                       </span>
                     </div>
@@ -190,3 +198,4 @@ export function CNCDashboard() {
     </div>
   )
 }
+

@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef, Suspense } from "react"
+import { useRouter, usePathname, useSearchParams } from "next/navigation"
 // Shared components
 import { PortalSidebar } from "@/components/shared/portal-sidebar"
 import { ComingSoon } from "@/components/shared/coming-soon"
@@ -25,18 +26,37 @@ import { InteriorsProvider } from "@/lib/contexts/interiors-context"
 
 function PortalContent() {
   const { activeBusiness } = usePortal()
-  const [activeModule, setActiveModule] = useState("dashboard")
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const mounted = useRef(false)
+
+  // Get active module from URL or default to dashboard
+  const activeModule = searchParams.get("module") || "dashboard"
+
+  const setActiveModule = (module: string) => {
+    const params = new URLSearchParams(searchParams.toString())
+    params.set("module", module)
+    router.replace(`${pathname}?${params.toString()}`)
+  }
+
+  // Track previous business to detect changes
+  const prevBusinessRef = useRef(activeBusiness)
 
   // Reset to dashboard when switching businesses
   useEffect(() => {
-    setActiveModule("dashboard")
+    // Only reset if business actually changed
+    if (prevBusinessRef.current !== activeBusiness) {
+      setActiveModule("dashboard")
+      prevBusinessRef.current = activeBusiness
+    }
   }, [activeBusiness])
 
   // Render CNC Shop modules
   const renderCNCModule = () => {
     switch (activeModule) {
       case "dashboard":
-        return <CNCDashboard />
+        return <CNCDashboard onNavigate={setActiveModule} />
       case "client-search":
         return <ClientSearch />
       case "inventory":
@@ -101,7 +121,9 @@ export default function Home() {
     <PortalProvider>
       <CNCProvider>
         <InteriorsProvider>
-          <PortalContent />
+          <Suspense fallback={<div className="flex items-center justify-center h-screen">Loading...</div>}>
+            <PortalContent />
+          </Suspense>
         </InteriorsProvider>
       </CNCProvider>
     </PortalProvider>

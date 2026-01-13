@@ -65,6 +65,8 @@ export const orderSchema = z.object({
     materials: z.array(z.object({
         materialId: z.string(),
         quantity: z.number().min(0),
+        width: z.number().optional(),
+        height: z.number().optional(),
         cost: z.number().min(0),
     })).optional().default([]),
     labourCost: z.number().min(0).optional().default(0),

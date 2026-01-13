@@ -74,27 +74,41 @@ function SidebarContent({ activeModule, setActiveModule, onSelect, collapsed }: 
   return (
     <div className="flex flex-col h-full overflow-hidden">
       {/* Portal Header */}
-      <div className={cn("p-4 border-b border-border transition-all duration-300 flex flex-col items-center", collapsed ? "p-2" : "p-5")}>
-        <div className={cn("flex items-center gap-3 transition-all duration-300", collapsed ? "mb-0" : "mb-5 w-full")}>
-          <div className="w-10 h-10 bg-zinc-900 rounded-xl flex items-center justify-center shrink-0 shadow-sm">
-            <Home className="w-6 h-6 text-white" strokeWidth={1.5} />
+      <div className={cn("relative transition-all duration-300", collapsed ? "p-3" : "px-4 pt-6 pb-4")}>
+        {/* Logo & Title */}
+        <div className={cn("flex items-center gap-3 transition-all duration-300 mb-6", collapsed ? "justify-center mb-4" : "")}>
+          <div className="relative">
+            <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center shrink-0 border border-primary/20 shadow-sm overflow-hidden group-hover:shadow-md transition-all">
+              <Home className="w-5 h-5 text-primary fill-primary/20" strokeWidth={2.5} />
+            </div>
+            {!collapsed && <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 border-2 border-background rounded-full animate-pulse" />}
           </div>
+
           {!collapsed && (
-            <div className="overflow-hidden whitespace-nowrap">
-              <h1 className="font-bold text-xl text-foreground tracking-tight leading-none mb-1">Jangid Homes</h1>
-              <p className="text-[9px] font-bold text-muted-foreground/80 uppercase tracking-[0.15em] leading-none">Business Portal</p>
+            <div className="min-w-0">
+              <h1 className="font-bold text-xl tracking-tight text-foreground leading-none">Jangid Homes</h1>
+              <div className="flex items-center gap-1.5 mt-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-primary/60"></span>
+                <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Business Portal</p>
+              </div>
             </div>
           )}
         </div>
-        {!collapsed && <BusinessSelector />}
+
+        {/* Business Selector - Fixed width matching header */}
+        {!collapsed && (
+          <div className="relative z-20">
+            <BusinessSelector />
+          </div>
+        )}
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 p-3 overflow-auto scrollbar-none mt-2">
+      <nav className="flex-1 p-3 overflow-auto scrollbar-none">
         {!collapsed && (
-          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.2em] mb-4 px-4 opacity-50">Menu</p>
+          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest mb-3 px-3">Menu</p>
         )}
-        <ul className="space-y-1">
+        <ul className="space-y-0.5">
           {menuItems.map((item) => (
             <li key={item.id}>
               <button
@@ -104,42 +118,45 @@ function SidebarContent({ activeModule, setActiveModule, onSelect, collapsed }: 
                 }}
                 title={collapsed ? item.label : undefined}
                 className={cn(
-                  "w-full flex items-center rounded-lg text-left transition-colors duration-200 group relative",
-                  collapsed ? "justify-center p-3" : "gap-3 px-4 py-2.5",
+                  "w-full flex items-center rounded-lg text-left transition-all duration-200 group",
+                  collapsed ? "justify-center p-3" : "gap-3 px-3 py-2.5",
                   activeModule === item.id
-                    ? "bg-primary text-primary-foreground"
+                    ? "bg-primary text-primary-foreground shadow-sm"
                     : "text-muted-foreground hover:bg-accent hover:text-foreground",
                 )}
               >
                 <item.icon className={cn(
-                  "w-5 h-5 shrink-0 transition-transform duration-200",
-                  activeModule === item.id ? "text-primary-foreground" : "text-muted-foreground group-hover:text-primary"
+                  "w-5 h-5 shrink-0",
+                  activeModule === item.id ? "text-primary-foreground" : "text-muted-foreground group-hover:text-foreground"
                 )} />
-                {!collapsed && <span className="font-medium">{item.label}</span>}
-                {!collapsed && activeModule === item.id && (
-                  <div className="absolute left-0 w-1 h-5 bg-white rounded-full" />
-                )}
+                {!collapsed && <span className="text-sm font-medium">{item.label}</span>}
               </button>
             </li>
           ))}
         </ul>
       </nav>
 
-      {/* Footer */}
-      <div className="p-4 border-t border-border bg-muted/20 space-y-3">
-        <div className={cn("flex items-center gap-2 text-xs text-muted-foreground", collapsed ? "justify-center" : "justify-center")}>
-          <div className="w-1.5 h-1.5 bg-green-500 rounded-full" />
-          {!collapsed && <span>Database Active</span>}
+      {/* Footer with Sign Out */}
+      <div className={cn("border-t border-border", collapsed ? "p-3" : "p-4")}>
+        {/* Database Status */}
+        <div className={cn("flex items-center gap-2 text-xs text-muted-foreground mb-3", collapsed ? "justify-center" : "")}>
+          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+          {!collapsed && <span className="font-medium">Database Active</span>}
         </div>
+
+        {/* Sign Out Button */}
         <Button
-          variant="ghost"
-          size={collapsed ? "icon" : "sm"}
-          className={cn("w-full text-muted-foreground hover:text-foreground", collapsed ? "justify-center" : "justify-start gap-2")}
+          variant="outline"
+          size={collapsed ? "icon" : "default"}
+          className={cn(
+            "w-full border-border hover:bg-destructive/10 hover:text-destructive hover:border-destructive/50 transition-colors",
+            collapsed ? "" : "justify-start gap-2"
+          )}
           onClick={() => signOut({ callbackUrl: '/login' })}
           title={collapsed ? "Sign Out" : undefined}
         >
           <LogOut className="w-4 h-4" />
-          {!collapsed && <span>Sign Out</span>}
+          {!collapsed && <span className="font-medium">Sign Out</span>}
         </Button>
       </div>
     </div>
@@ -173,14 +190,14 @@ export function PortalSidebar({ activeModule, setActiveModule }: PortalSidebarPr
       </aside>
 
       {/* Mobile Header */}
-      <div className="lg:hidden flex items-center justify-between p-2.5 bg-card border-b border-border sticky top-0 z-50 w-full shadow-sm">
+      <div className="lg:hidden flex items-center justify-between p-3 bg-card border-b border-border sticky top-0 z-50 w-full shadow-sm">
         <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 bg-zinc-900 rounded-lg flex items-center justify-center shrink-0">
-            <Home className="w-5 h-5 text-white" strokeWidth={1.5} />
+          <div className="w-9 h-9 bg-gradient-to-br from-amber-500 to-amber-600 rounded-lg flex items-center justify-center shrink-0 shadow-sm">
+            <Home className="w-4 h-4 text-white" strokeWidth={2} />
           </div>
           <div className="flex flex-col">
             <h1 className="font-bold text-base text-foreground leading-tight">Jangid Homes</h1>
-            <p className="text-[8px] font-bold text-muted-foreground uppercase tracking-widest leading-tight">Business Portal</p>
+            <p className="text-[9px] font-medium text-muted-foreground uppercase tracking-wider">Business Portal</p>
           </div>
         </div>
 

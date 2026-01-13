@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Plus, Users, Search, Phone, MapPin, Trash2, Edit2, Loader2 } from "lucide-react"
+import { Plus, Users, Search, Phone, MapPin, Trash2, Edit2, Loader2, AlertCircle } from "lucide-react"
 
 const clientTypes = ["Architect", "Contractor", "Shop", "Individual", "Other"] as const
 
@@ -27,8 +27,22 @@ export function CNCClients() {
     type: "Individual",
     outstandingBalance: 0,
   })
+  const [errors, setErrors] = useState<Record<string, string>>({})
+
+  const validateClient = () => {
+    const newErrors: Record<string, string> = {}
+    if (!newClient.name?.trim()) newErrors.name = "Name is required"
+    if (!newClient.mobile?.trim()) {
+      newErrors.mobile = "Mobile number is required"
+    } else if (!/^\d{10}$/.test(newClient.mobile.trim())) {
+      newErrors.mobile = "Must be exactly 10 digits"
+    }
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
 
   const handleAddClient = async () => {
+    if (!validateClient()) return
     setSaving(true)
     try {
       await addClient({
@@ -48,6 +62,7 @@ export function CNCClients() {
         type: "Individual",
         outstandingBalance: 0,
       })
+      setErrors({})
     } catch (error) {
       console.error("Failed to add client:", error)
     } finally {
@@ -90,23 +105,26 @@ export function CNCClients() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+      <div className="flex items-center justify-center h-48">
+        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
       </div>
     )
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+    <div className="space-y-5">
+      {/* Header - matching dashboard style */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-bold text-foreground">Clients</h2>
-          <p className="text-sm text-muted-foreground">Manage your customers</p>
+          <h2 className="text-xl font-semibold text-foreground">Clients</h2>
+          <span className="text-sm text-muted-foreground">
+            {clients.length} {clients.length === 1 ? 'client' : 'clients'} registered
+          </span>
         </div>
         <Dialog open={showAddClient} onOpenChange={setShowAddClient}>
           <DialogTrigger asChild>
-            <Button className="w-full sm:w-auto">
-              <Plus className="w-4 h-4 mr-2" />
+            <Button size="sm" className="h-8 text-xs">
+              <Plus className="w-3.5 h-3.5 mr-1.5" />
               Add Client
             </Button>
           </DialogTrigger>
@@ -114,23 +132,44 @@ export function CNCClients() {
             <DialogHeader>
               <DialogTitle>Add New Client</DialogTitle>
             </DialogHeader>
-            <div className="space-y-4 pt-4">
+            <form onSubmit={(e) => { e.preventDefault(); handleAddClient(); }} className="space-y-4 pt-4">
               <div className="space-y-2">
-                <Label>Client Name</Label>
+                <Label className={errors.name ? "text-destructive" : ""}>Client Name</Label>
                 <Input
                   value={newClient.name}
-                  onChange={(e) => setNewClient({ ...newClient, name: e.target.value })}
+                  onChange={(e) => {
+                    setNewClient({ ...newClient, name: e.target.value })
+                    if (errors.name) setErrors({ ...errors, name: "" })
+                  }}
                   placeholder="Enter client name"
+                  autoFocus
+                  className={errors.name ? "border-destructive focus-visible:ring-destructive" : ""}
                 />
+                {errors.name && (
+                  <p className="text-xs font-medium text-destructive flex items-center gap-1 mt-1">
+                    <AlertCircle className="w-3 h-3" />
+                    {errors.name}
+                  </p>
+                )}
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Mobile Number</Label>
+                  <Label className={errors.mobile ? "text-destructive" : ""}>Mobile Number</Label>
                   <Input
                     value={newClient.mobile}
-                    onChange={(e) => setNewClient({ ...newClient, mobile: e.target.value })}
+                    onChange={(e) => {
+                      setNewClient({ ...newClient, mobile: e.target.value })
+                      if (errors.mobile) setErrors({ ...errors, mobile: "" })
+                    }}
                     placeholder="9876543210"
+                    className={errors.mobile ? "border-destructive focus-visible:ring-destructive" : ""}
                   />
+                  {errors.mobile && (
+                    <p className="text-xs font-medium text-destructive flex items-center gap-1 mt-1">
+                      <AlertCircle className="w-3 h-3" />
+                      {errors.mobile}
+                    </p>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label>Client Type</Label>
@@ -167,36 +206,38 @@ export function CNCClients() {
                   placeholder="GST number"
                 />
               </div>
-              <Button onClick={handleAddClient} className="w-full" disabled={!newClient.name || saving}>
+              <Button type="submit" className="w-full" disabled={!newClient.name || saving}>
                 {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                 Add Client
               </Button>
-            </div>
+            </form>
           </DialogContent>
         </Dialog>
       </div>
 
+      {/* Search - Professional compact style */}
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
         <Input
-          className="pl-10 h-10"
-          placeholder="Search clients..."
+          className="pl-9 h-9 text-sm"
+          placeholder="Search by name or mobile..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
         />
       </div>
 
+      {/* Client Cards */}
       {filteredClients.length === 0 ? (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <Users className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-            <p className="text-muted-foreground">
-              {clients.length === 0 ? "No clients added yet." : "No clients found."}
+        <Card className="border shadow-sm">
+          <CardContent className="py-10 text-center">
+            <Users className="w-10 h-10 mx-auto text-muted-foreground mb-3" />
+            <p className="text-sm text-muted-foreground">
+              {clients.length === 0 ? "No clients added yet" : "No clients found"}
             </p>
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4">
+        <div className="grid gap-3">
           {filteredClients.map((client) => {
             const clientId = client.id || client._id || ""
             const clientOrders = getClientOrders(clientId)
@@ -204,56 +245,80 @@ export function CNCClients() {
             const outstanding = clientOrders.reduce((sum, o) => sum + o.balanceAmount, 0)
 
             return (
-              <Card key={clientId} className="overflow-hidden">
-                <CardContent className="p-0">
-                  <div className="flex flex-col p-4 gap-4">
-                    <div className="flex items-start gap-3">
-                      <div className="w-10 h-10 md:w-12 md:h-12 bg-primary/10 rounded-full flex items-center justify-center shrink-0">
-                        <span className="text-base md:text-lg font-bold text-primary">{client.name.charAt(0).toUpperCase()}</span>
+              <Card key={clientId} className="border shadow-sm hover:shadow-md transition-all">
+                <CardContent className="p-4">
+                  {/* Main Content */}
+                  <div className="flex items-start gap-3">
+                    {/* Avatar */}
+                    <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center shrink-0">
+                      <span className="text-sm font-bold text-primary">{client.name.charAt(0).toUpperCase()}</span>
+                    </div>
+
+                    {/* Client Info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="text-base font-semibold text-foreground truncate">{client.name}</h3>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-medium uppercase tracking-wide bg-muted text-muted-foreground">
+                          {client.type}
+                        </span>
                       </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-start justify-between gap-2">
-                          <h3 className="font-semibold text-base md:text-lg truncate">{client.name}</h3>
-                          <span className="px-2 py-0.5 bg-muted rounded text-[10px] font-medium shrink-0">{client.type}</span>
-                        </div>
-                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-xs md:text-sm text-muted-foreground">
-                          <span className="flex items-center gap-1">
-                            <Phone className="w-3 h-3" />
-                            {client.mobile}
-                          </span>
-                        </div>
+                      <div className="flex flex-wrap items-center gap-3 mt-1 text-xs text-muted-foreground">
+                        <span className="flex items-center gap-1">
+                          <Phone className="w-3 h-3" />
+                          {client.mobile}
+                        </span>
                         {client.address && (
-                          <p className="text-xs md:text-sm text-muted-foreground mt-1 flex items-center gap-1 truncate">
-                            <MapPin className="w-3 h-3 shrink-0" />
-                            {client.address}
-                          </p>
+                          <span className="flex items-center gap-1">
+                            <MapPin className="w-3 h-3" />
+                            <span className="truncate max-w-32">{client.address}</span>
+                          </span>
                         )}
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between py-3 border-y border-border/50">
-                      <div>
-                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-bold">Total Sales</p>
-                        <p className="text-sm md:text-base font-bold">₹{totalBusiness.toLocaleString("en-IN")}</p>
-                        <p className="text-[10px] text-muted-foreground">{clientOrders.length} orders</p>
+                    {/* Stats - Desktop */}
+                    <div className="hidden sm:flex items-center gap-4">
+                      <div className="text-right">
+                        <p className="text-lg font-bold text-foreground">₹{totalBusiness.toLocaleString("en-IN")}</p>
+                        <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{clientOrders.length} orders</p>
                       </div>
                       {outstanding > 0 && (
                         <div className="text-right">
-                          <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-bold">Pending</p>
-                          <p className="text-sm md:text-base font-bold text-amber-600">₹{outstanding.toLocaleString("en-IN")}</p>
+                          <p className="text-base font-bold text-amber-600">₹{outstanding.toLocaleString("en-IN")}</p>
+                          <p className="text-[10px] font-medium uppercase tracking-wide text-amber-600/70">pending</p>
                         </div>
                       )}
                     </div>
+                  </div>
 
-                    <div className="flex items-center justify-end gap-2">
-                      <Button variant="outline" size="sm" className="h-8 md:h-9" onClick={() => setEditingClient(client)}>
-                        <Edit2 className="w-3.5 h-3.5 mr-1.5" />
-                        Edit
-                      </Button>
-                      <Button variant="outline" size="sm" className="h-8 md:h-9 text-destructive hover:text-destructive" onClick={() => handleDeleteClient(clientId)}>
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </Button>
+                  {/* Stats - Mobile */}
+                  <div className="flex sm:hidden items-center justify-between mt-3 pt-3 border-t border-border/50">
+                    <div>
+                      <p className="text-base font-bold text-foreground">₹{totalBusiness.toLocaleString("en-IN")}</p>
+                      <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{clientOrders.length} orders</p>
                     </div>
+                    {outstanding > 0 && (
+                      <div className="text-right">
+                        <p className="text-sm font-bold text-amber-600">₹{outstanding.toLocaleString("en-IN")}</p>
+                        <p className="text-[10px] font-medium uppercase tracking-wide text-amber-600/70">pending</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex items-center justify-end gap-1.5 mt-3 pt-3 border-t border-border/50">
+                    <Button variant="outline" size="sm" className="h-8 px-3 text-xs gap-1.5" onClick={() => setEditingClient(client)}>
+                      <Edit2 className="w-3.5 h-3.5" />
+                      <span className="hidden sm:inline">Edit</span>
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                      onClick={() => handleDeleteClient(clientId)}
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
@@ -263,17 +328,18 @@ export function CNCClients() {
       )}
 
       <Dialog open={!!editingClient} onOpenChange={() => setEditingClient(null)}>
-        <DialogContent>
+        <DialogContent className="max-w-lg w-[95vw] rounded-2xl">
           <DialogHeader>
             <DialogTitle>Edit Client</DialogTitle>
           </DialogHeader>
           {editingClient && (
-            <div className="space-y-4 pt-4">
+            <form onSubmit={(e) => { e.preventDefault(); handleUpdateClient(); }} className="space-y-4 pt-4">
               <div className="space-y-2">
                 <Label>Client Name</Label>
                 <Input
                   value={editingClient.name}
                   onChange={(e) => setEditingClient({ ...editingClient, name: e.target.value })}
+                  autoFocus
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
@@ -317,14 +383,14 @@ export function CNCClients() {
                   onChange={(e) => setEditingClient({ ...editingClient, gst: e.target.value })}
                 />
               </div>
-              <Button onClick={handleUpdateClient} className="w-full" disabled={saving}>
+              <Button type="submit" className="w-full" disabled={saving}>
                 {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                 Save Changes
               </Button>
-            </div>
+            </form>
           )}
         </DialogContent>
       </Dialog>
-    </div>
+    </div >
   )
 }
