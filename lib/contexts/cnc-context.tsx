@@ -44,8 +44,25 @@ export type Order = {
   orderNumber: string
   date: string
   clientId: string
+  clientSnapshot?: {  // Snapshot of client data at order time
+    name: string
+    mobile: string
+    type?: string
+    address?: string
+  }
   designType: string
-  materials: { materialId: string; quantity: number; width?: number; height?: number; cost: number }[]
+  materials: {
+    materialId: string
+    materialSnapshot?: {  // Snapshot of material data at order time
+      type: string
+      size: string
+      thickness: number
+    }
+    quantity: number
+    width?: number
+    height?: number
+    cost: number
+  }[]
   labourCost: number
   totalValue: number
   advanceReceived: number
@@ -124,6 +141,9 @@ type CNCContextType = {
   reconcileStock: (a: { materialId: string; newStock: number; reason: string; date: string }) => Promise<void>
   // Refresh
   refreshData: () => Promise<void>
+  // Order filtering by month
+  fetchOrdersByMonth: (month: number, year: number) => Promise<void>
+  ordersLoading: boolean
 }
 
 const CNCContext = createContext<CNCContextType | null>(null)
@@ -142,27 +162,27 @@ export function CNCProvider({ children }: { children: ReactNode }) {
   const [wastages, setWastages] = useState<Wastage[]>([])
   const [adjustments, setAdjustments] = useState<StockAdjustment[]>([])
   const [loading, setLoading] = useState(true)
+  const [ordersLoading, setOrdersLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const refreshData = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
-      const [materialsRes, purchasesRes, clientsRes, ordersRes, expensesRes, wastagesRes, adjustmentsRes] = await Promise.all([
+      // Note: Orders are NOT fetched here - they are fetched by month in the Orders component
+      const [materialsRes, purchasesRes, clientsRes, expensesRes, wastagesRes, adjustmentsRes] = await Promise.all([
         fetch('/api/cnc/materials'),
         fetch('/api/cnc/purchases'),
         fetch('/api/cnc/clients'),
-        fetch('/api/cnc/orders'),
         fetch('/api/cnc/expenses'),
         fetch('/api/cnc/wastages'),
         fetch('/api/cnc/adjustments'),
       ])
 
-      const [materialsData, purchasesData, clientsData, ordersData, expensesData, wastagesData, adjustmentsData] = await Promise.all([
+      const [materialsData, purchasesData, clientsData, expensesData, wastagesData, adjustmentsData] = await Promise.all([
         materialsRes.json(),
         purchasesRes.json(),
         clientsRes.json(),
-        ordersRes.json(),
         expensesRes.json(),
         wastagesRes.json(),
         adjustmentsRes.json(),
@@ -171,7 +191,6 @@ export function CNCProvider({ children }: { children: ReactNode }) {
       setMaterials(Array.isArray(materialsData) ? materialsData.map(normalizeId) : [])
       setPurchases(Array.isArray(purchasesData) ? purchasesData.map(normalizeId) : [])
       setClients(Array.isArray(clientsData) ? clientsData.map(normalizeId) : [])
-      setOrders(Array.isArray(ordersData) ? ordersData.map(normalizeId) : [])
       setExpenses(Array.isArray(expensesData) ? expensesData.map(normalizeId) : [])
       setWastages(Array.isArray(wastagesData) ? wastagesData.map(normalizeId) : [])
       setAdjustments(Array.isArray(adjustmentsData) ? adjustmentsData.map(normalizeId) : [])
@@ -328,6 +347,20 @@ export function CNCProvider({ children }: { children: ReactNode }) {
     await refreshData()
   }
 
+  // Fetch orders for a specific month/year
+  const fetchOrdersByMonth = async (month: number, year: number) => {
+    setOrdersLoading(true)
+    try {
+      const res = await fetch(`/api/cnc/orders?month=${month}&year=${year}`)
+      const data = await res.json()
+      setOrders(Array.isArray(data) ? data.map(normalizeId) : [])
+    } catch (err) {
+      console.error('Error fetching orders by month:', err)
+    } finally {
+      setOrdersLoading(false)
+    }
+  }
+
   return (
     <CNCContext.Provider
       value={{
@@ -355,6 +388,8 @@ export function CNCProvider({ children }: { children: ReactNode }) {
         addWastage,
         reconcileStock,
         refreshData,
+        fetchOrdersByMonth,
+        ordersLoading,
       }}
     >
       {children}

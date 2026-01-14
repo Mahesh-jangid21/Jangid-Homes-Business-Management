@@ -2,11 +2,10 @@ import { z } from 'zod'
 
 // ==================== COMMON VALIDATORS ====================
 
-// Mobile number: 10-15 digits (flexible for international formats)
+// Mobile number: exactly 10 digits for India (starts with 6-9)
 const mobileSchema = z.string()
-    .min(10, 'Mobile number must be at least 10 digits')
-    .max(15, 'Mobile number is too long')
-    .regex(/^\d+$/, 'Mobile number should only contain digits')
+    .length(10, 'Mobile number must be exactly 10 digits')
+    .regex(/^[6-9]\d{9}$/, 'Invalid Indian mobile number (must start with 6-9)')
 
 // GST Number: 15 characters or empty (optional)
 const gstSchema = z.string()
@@ -61,9 +60,22 @@ export const orderSchema = z.object({
     orderNumber: z.string().min(1, 'Order number is required'),
     date: dateSchema,
     clientId: z.string().min(1, 'Client is required'),
+    // Client snapshot - populated server-side
+    clientSnapshot: z.object({
+        name: z.string(),
+        mobile: z.string(),
+        type: z.string().optional(),
+        address: z.string().optional(),
+    }).optional(),
     designType: z.string().min(1, 'Design type is required'),
     materials: z.array(z.object({
         materialId: z.string(),
+        // Material snapshot - populated server-side
+        materialSnapshot: z.object({
+            type: z.string(),
+            size: z.string(),
+            thickness: z.number(),
+        }).optional(),
         quantity: z.number().min(0),
         width: z.number().optional(),
         height: z.number().optional(),
