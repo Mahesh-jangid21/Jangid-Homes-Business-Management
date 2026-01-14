@@ -3,14 +3,19 @@
 import { useCNC } from "@/lib/contexts/cnc-context"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Package, Users, ClipboardList, TrendingUp, AlertTriangle, IndianRupee, Loader2, Plus, Receipt } from "lucide-react"
+import { Package, Users, ClipboardList, TrendingUp, AlertTriangle, IndianRupee, Loader2, Plus, Receipt, Calendar } from "lucide-react"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { useRouter } from "next/navigation"
+
+const orderStatuses = ["Pending", "In Progress", "Completed", "Billed"] as const
 
 interface CNCDashboardProps {
   onNavigate?: (module: string) => void
 }
 
 export function CNCDashboard({ onNavigate }: CNCDashboardProps) {
-  const { materials, clients, orders, loading } = useCNC()
+  const { materials, clients, orders, loading, updateOrder } = useCNC()
+  const router = useRouter()
 
   if (loading) {
     return (
@@ -172,21 +177,58 @@ export function CNCDashboard({ onNavigate }: CNCDashboardProps) {
             </div>
             <div className="space-y-2">
               {pendingOrders.slice(0, 5).map((order) => {
-                const client = clients.find((c) => c.id === order.clientId)
+                // Use clientSnapshot if available, fallback to lookup
+                const clientName = order.clientSnapshot?.name || clients.find((c) => (c.id || c._id) === order.clientId)?.name || "Unknown"
                 return (
-                  <div key={order.id} className="flex justify-between items-center text-sm py-2 border-b border-border last:border-0">
-                    <div>
-                      <p className="font-medium text-foreground">{order.orderNumber}</p>
-                      <p className="text-muted-foreground text-xs">{client?.name || "Unknown"}</p>
+                  <div key={order.id} className="group flex justify-between items-center text-sm py-3 border-b border-border last:border-0 hover:bg-muted/30 px-2 -mx-2 rounded-lg transition-colors">
+                    <div className="flex-1 min-w-0 pr-4">
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => {
+                            if (onNavigate) {
+                              onNavigate("orders")
+                              // We use the search parameter we added to CNCOrders
+                              const params = new URLSearchParams(window.location.search)
+                              params.set("module", "orders")
+                              params.set("search", order.orderNumber)
+                              window.history.replaceState(null, "", `?${params.toString()}`)
+                            }
+                          }}
+                          className="font-semibold text-primary hover:underline transition-all truncate"
+                        >
+                          {order.orderNumber}
+                        </button>
+                        <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                          <Calendar className="w-3 h-3" />
+                          {order.date ? new Date(order.date).toLocaleDateString("en-IN", { day: "numeric", month: "short" }) : "N/A"}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <p className="text-foreground font-medium truncate max-w-[120px]">{clientName}</p>
+                        <span className="text-muted-foreground text-[10px]">•</span>
+                        <p className="text-muted-foreground text-xs truncate italic">{order.designType || "Job"}</p>
+                      </div>
                     </div>
-                    <div className="text-right flex items-center gap-2">
-                      <span className="font-medium text-foreground">₹{order.totalValue.toLocaleString("en-IN")}</span>
-                      <span className={`text-xs px-2 py-0.5 rounded font-medium ${order.status === "Pending"
-                        ? "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300"
-                        : "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300"
-                        }`}>
-                        {order.status}
-                      </span>
+                    <div className="text-right flex items-center gap-3 shrink-0">
+                      <span className="font-bold text-foreground tabular-nums">₹{(order.totalValue || 0).toLocaleString("en-IN")}</span>
+                      <Select
+                        value={order.status}
+                        onValueChange={(newStatus) => updateOrder(order.id!, { status: newStatus as any })}
+                      >
+                        <SelectTrigger className={`h-7 w-28 text-[10px] font-medium uppercase tracking-wider ${order.status === "Pending"
+                          ? "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/50 dark:text-amber-300 dark:border-amber-800"
+                          : "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/50 dark:text-blue-300 dark:border-blue-800"
+                          }`}>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {orderStatuses.map((s) => (
+                            <SelectItem key={s} value={s} className="text-[10px] uppercase font-medium">
+                              {s}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
                 )

@@ -87,8 +87,25 @@ export interface IOrder extends Document {
     orderNumber: string
     date: Date
     clientId: mongoose.Types.ObjectId
+    clientSnapshot: {  // Snapshot of client data at order time
+        name: string
+        mobile: string
+        type: string
+        address?: string
+    }
     designType: string
-    materials: { materialId: mongoose.Types.ObjectId; quantity: number; width?: number; height?: number; cost: number }[]
+    materials: {
+        materialId: mongoose.Types.ObjectId
+        materialSnapshot: {  // Snapshot of material data at order time
+            type: string
+            size: string
+            thickness: number
+        }
+        quantity: number
+        width?: number
+        height?: number
+        cost: number
+    }[]
     labourCost: number
     totalValue: number
     advanceReceived: number
@@ -110,10 +127,21 @@ const OrderSchema = new Schema<IOrder>(
         orderNumber: { type: String, required: true, unique: true },
         date: { type: Date, required: true },
         clientId: { type: Schema.Types.ObjectId, ref: 'CNCClient', required: true },
+        clientSnapshot: {
+            name: { type: String, required: true },
+            mobile: { type: String, required: true },
+            type: { type: String, default: 'Individual' },
+            address: { type: String, default: '' }
+        },
         designType: { type: String, required: true },
         materials: [
             {
                 materialId: { type: Schema.Types.ObjectId, ref: 'Material' },
+                materialSnapshot: {
+                    type: { type: String },
+                    size: { type: String },
+                    thickness: { type: Number }
+                },
                 quantity: { type: Number },
                 width: { type: Number },
                 height: { type: Number },
@@ -217,6 +245,35 @@ const StockAdjustmentSchema = new Schema<IStockAdjustment>(
     },
     { timestamps: true }
 )
+
+// ==================== INDEXES ====================
+// Material - compound index for type/size/thickness lookups
+MaterialSchema.index({ type: 1, size: 1, thickness: 1 })
+
+// Purchase - for date range queries and material lookups
+PurchaseSchema.index({ materialId: 1 })
+PurchaseSchema.index({ date: -1 })
+
+// CNC Client - for search and mobile lookup
+CNCClientSchema.index({ mobile: 1 })
+CNCClientSchema.index({ name: 'text' })
+
+// Order - frequently filtered fields
+OrderSchema.index({ date: -1 })
+OrderSchema.index({ clientId: 1 })
+OrderSchema.index({ status: 1 })
+
+// CNC Expense - date range queries
+CNCExpenseSchema.index({ date: -1 })
+CNCExpenseSchema.index({ type: 1 })
+
+// Wastage - material and date queries
+WastageSchema.index({ materialId: 1 })
+WastageSchema.index({ date: -1 })
+
+// Stock Adjustment - material and date queries
+StockAdjustmentSchema.index({ materialId: 1 })
+StockAdjustmentSchema.index({ date: -1 })
 
 // Export models
 export const Material =
