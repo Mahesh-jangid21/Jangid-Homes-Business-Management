@@ -110,6 +110,20 @@ const InteriorExpenseSchema = new Schema<IInteriorExpense>(
     { timestamps: true }
 )
 
+// ==================== INDEXES ====================
+// Interior Client - for search and mobile lookup
+InteriorClientSchema.index({ mobile: 1 })
+InteriorClientSchema.index({ name: 'text' })
+
+// Interior Project - frequently filtered fields
+InteriorProjectSchema.index({ clientId: 1 })
+InteriorProjectSchema.index({ status: 1 })
+InteriorProjectSchema.index({ startDate: -1 })
+
+// Interior Expense - date range and project queries
+InteriorExpenseSchema.index({ projectId: 1 })
+InteriorExpenseSchema.index({ date: -1 })
+
 // Export models
 export const InteriorClient =
     mongoose.models.InteriorClient || mongoose.model<IInteriorClient>('InteriorClient', InteriorClientSchema)

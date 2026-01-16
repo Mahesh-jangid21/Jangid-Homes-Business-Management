@@ -56,7 +56,6 @@ export async function POST(request: NextRequest) {
         return NextResponse.json(adjustment, { status: 201 })
     } catch (error: unknown) {
         console.error('Error creating adjustment:', error)
-        const message = error instanceof Error ? error.message : 'Failed to create adjustment'
-        return NextResponse.json({ error: message }, { status: 500 })
+        return NextResponse.json({ error: 'Failed to create adjustment' }, { status: 500 })
     }
 }

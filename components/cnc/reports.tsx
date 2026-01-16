@@ -67,8 +67,9 @@ export function CNCReports() {
   const pendingPayments = orders
     .filter((o) => o.balanceAmount > 0)
     .map((o) => {
-      const client = clients.find((c) => (c.id || c._id) === o.clientId)
-      return { ...o, clientName: client?.name || "Unknown" }
+      // Use clientSnapshot if available, fallback to lookup
+      const clientName = o.clientSnapshot?.name || clients.find((c) => (c.id || c._id) === o.clientId)?.name || "Unknown"
+      return { ...o, clientName }
     })
 
   // Payment Breakdown
@@ -285,6 +286,9 @@ export function CNCReports() {
                 </div>
                 <p className={`text-lg font-bold ${netProfit >= 0 ? "text-green-600" : "text-red-600"}`}>
                   ₹{(netProfit || 0).toLocaleString("en-IN")}
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {totalSales > 0 ? Math.round((netProfit / totalSales) * 100) : 0}% margin
                 </p>
               </CardContent>
             </Card>
