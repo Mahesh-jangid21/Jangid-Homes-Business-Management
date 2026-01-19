@@ -2,37 +2,37 @@
 const http = require('http');
 
 const data = JSON.stringify({
-    email: 'info@jangidhomes.in',
-    password: 'mahesh123',
-    name: 'Admin'
+  email: 'info@jangidhomes.in',
+  password: 'mahesh@123',
+  name: 'Admin'
 });
 
 const options = {
-    hostname: 'localhost',
-    port: 3000,
-    path: '/api/setup',
-    method: 'POST',
-    headers: {
-        'Content-Type': 'application/json',
-        'Content-Length': data.length
-    }
+  hostname: 'localhost',
+  port: 3001,
+  path: '/api/setup',
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Content-Length': data.length
+  }
 };
 
 const req = http.request(options, (res) => {
-    let responseBody = '';
+  let responseBody = '';
 
-    res.on('data', (chunk) => {
-        responseBody += chunk;
-    });
+  res.on('data', (chunk) => {
+    responseBody += chunk;
+  });
 
-    res.on('end', () => {
-        console.log(`Status Code: ${res.statusCode}`);
-        console.log('Response:', responseBody);
-    });
+  res.on('end', () => {
+    console.log(`Status Code: ${res.statusCode}`);
+    console.log('Response:', responseBody);
+  });
 });
 
 req.on('error', (error) => {
-    console.error('Error:', error);
+  console.error('Error:', error);
 });
 
 req.write(data);

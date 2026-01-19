@@ -18,7 +18,8 @@ import {
   ChevronLeft,
   ChevronRight,
   LogOut,
-  User
+  User,
+  Shield
 } from "lucide-react"
 import {
   Sheet,
@@ -39,6 +40,7 @@ const cncMenuItems = [
   { id: "orders", label: "Orders", icon: ClipboardList },
   { id: "expenses", label: "Expenses", icon: Receipt },
   { id: "reports", label: "Reports", icon: BarChart3 },
+  { id: "users", label: "User Management", icon: Shield, adminOnly: true },
 ]
 
 // Placeholder menus for other businesses
@@ -48,6 +50,7 @@ const interiorsMenuItems = [
   { id: "clients", label: "Clients", icon: Users },
   { id: "expenses", label: "Expenses", icon: Receipt },
   { id: "reports", label: "Reports", icon: BarChart3 },
+  { id: "users", label: "User Management", icon: Shield, adminOnly: true },
 ]
 
 const drapesMenuItems = [
@@ -57,6 +60,7 @@ const drapesMenuItems = [
   { id: "clients", label: "Clients", icon: Users },
   { id: "expenses", label: "Expenses", icon: Receipt },
   { id: "reports", label: "Reports", icon: BarChart3 },
+  { id: "users", label: "User Management", icon: Shield, adminOnly: true },
 ]
 
 type PortalSidebarProps = {
@@ -67,9 +71,14 @@ type PortalSidebarProps = {
 
 function SidebarContent({ activeModule, setActiveModule, onSelect, collapsed }: PortalSidebarProps & { onSelect?: () => void }) {
   const { activeBusiness } = usePortal()
+  const { data: session } = useSession()
+  const userRole = (session?.user as any)?.role
 
-  const menuItems =
+  const allMenuItems =
     activeBusiness === "cnc-shop" ? cncMenuItems : activeBusiness === "interiors" ? interiorsMenuItems : drapesMenuItems
+
+  // Filter admin-only menu items for non-admin users
+  const menuItems = allMenuItems.filter((item) => !(item as any).adminOnly || userRole === "admin")
 
   return (
     <div className="flex flex-col h-full overflow-hidden">

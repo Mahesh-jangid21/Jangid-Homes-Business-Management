@@ -1,6 +1,7 @@
 "use client"
 
-import { usePortal, businesses } from "@/lib/contexts/portal-context"
+import { usePortal, businesses, BusinessType } from "@/lib/contexts/portal-context"
+import { useSession } from "next-auth/react"
 import { cn } from "@/lib/utils"
 import { Scissors, Home, Blinds, ChevronDown, Check } from "lucide-react"
 import { useState, useRef, useEffect } from "react"
@@ -13,8 +14,18 @@ const iconMap = {
 
 export function BusinessSelector() {
   const { activeBusiness, setActiveBusiness, currentBusiness } = usePortal()
+  const { data: session } = useSession()
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
+
+  // Get user's allowed businesses from session
+  const userRole = (session?.user as any)?.role
+  const allowedBusinesses: string[] = (session?.user as any)?.allowedBusinesses || ['cnc-shop', 'interiors', 'drapes']
+
+  // Filter businesses based on user permissions (admin sees all)
+  const visibleBusinesses = userRole === 'admin'
+    ? businesses
+    : businesses.filter((b) => allowedBusinesses.includes(b.id))
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -26,7 +37,29 @@ export function BusinessSelector() {
     return () => document.removeEventListener("mousedown", handleClickOutside)
   }, [])
 
+  // If current business is not allowed, switch to first allowed
+  useEffect(() => {
+    if (visibleBusinesses.length > 0 && !allowedBusinesses.includes(activeBusiness) && userRole !== 'admin') {
+      setActiveBusiness(visibleBusinesses[0].id)
+    }
+  }, [activeBusiness, allowedBusinesses, visibleBusinesses, setActiveBusiness, userRole])
+
   const CurrentIcon = iconMap[currentBusiness.icon as keyof typeof iconMap]
+
+  // If only one business is available, don't show selector dropdown
+  if (visibleBusinesses.length <= 1) {
+    return (
+      <div className="w-full flex items-center gap-3 p-2 rounded-xl bg-card border border-border shadow-sm">
+        <div className={cn("w-9 h-9 rounded-lg flex items-center justify-center shadow-inner shrink-0", currentBusiness.color)}>
+          <CurrentIcon className="w-4 h-4 text-white" strokeWidth={2.5} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-0.5">Workspace</p>
+          <p className="font-bold text-sm text-foreground truncate leading-tight">{currentBusiness.name}</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div ref={ref} className="relative w-full">
@@ -55,7 +88,7 @@ export function BusinessSelector() {
         <div className="max-h-[240px] overflow-y-auto scrollbar-thin scrollbar-thumb-muted">
           <div className="p-1.5 space-y-1">
             <p className="px-2 py-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Switch Workspace</p>
-            {businesses.map((business) => {
+            {visibleBusinesses.map((business) => {
               const Icon = iconMap[business.icon as keyof typeof iconMap]
               const isActive = activeBusiness === business.id
               return (
@@ -92,3 +125,4 @@ export function BusinessSelector() {
     </div>
   )
 }
+

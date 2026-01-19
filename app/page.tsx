@@ -19,6 +19,8 @@ import { InteriorsClients } from "@/components/interiors/clients"
 import { InteriorsProjectsModule } from "@/components/interiors/projects"
 import { InteriorsExpensesModule } from "@/components/interiors/expenses"
 import { InteriorsReportsModule } from "@/components/interiors/reports"
+// Shared admin components
+import { UsersManagement } from "@/components/shared/users"
 // Context providers
 import { CNCProvider } from "@/lib/contexts/cnc-context"
 import { PortalProvider, usePortal } from "@/lib/contexts/portal-context"
@@ -69,6 +71,8 @@ function PortalContent() {
         return <CNCExpenses />
       case "reports":
         return <CNCReports />
+      case "users":
+        return <UsersManagement />
       default:
         return <CNCDashboard />
     }
@@ -87,6 +91,8 @@ function PortalContent() {
         return <InteriorsExpensesModule />
       case "reports":
         return <InteriorsReportsModule />
+      case "users":
+        return <UsersManagement />
       default:
         return <InteriorsDashboard />
     }

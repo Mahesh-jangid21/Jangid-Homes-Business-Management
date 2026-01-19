@@ -46,6 +46,7 @@ export const authOptions: NextAuthOptions = {
                         email: user.email,
                         name: user.name,
                         role: user.role,
+                        allowedBusinesses: user.allowedBusinesses || ['cnc-shop', 'interiors', 'drapes'],
                     }
                 } catch (error) {
                     console.error('Auth error:', error)
@@ -62,13 +63,15 @@ export const authOptions: NextAuthOptions = {
             if (user) {
                 token.id = user.id
                 token.role = (user as { role?: string }).role
+                token.allowedBusinesses = (user as { allowedBusinesses?: string[] }).allowedBusinesses
             }
             return token
         },
         async session({ session, token }) {
             if (session.user) {
-                (session.user as { id?: string; role?: string }).id = token.id as string
-                (session.user as { id?: string; role?: string }).role = token.role as string
+                (session.user as any).id = token.id as string
+                (session.user as any).role = token.role as string
+                (session.user as any).allowedBusinesses = token.allowedBusinesses as string[]
             }
             return session
         },
