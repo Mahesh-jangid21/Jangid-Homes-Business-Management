@@ -175,7 +175,7 @@ export function CNCProvider({ children }: { children: ReactNode }) {
         fetch('/api/cnc/purchases'),
         fetch('/api/cnc/clients'),
         fetch('/api/cnc/expenses'),
-        fetch('/api/cnc/wastages'),
+        fetch('/api/cnc/wastages'), 
         fetch('/api/cnc/adjustments'),
       ])
 
@@ -202,9 +202,30 @@ export function CNCProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
+  // Fetch current month's orders on initial load (for Dashboard stats)
+  const fetchCurrentMonthOrders = useCallback(async () => {
+    const now = new Date()
+    const month = now.getMonth() + 1
+    const year = now.getFullYear()
+
+    try {
+      const res = await fetch(`/api/cnc/orders?month=${month}&year=${year}`)
+      if (res.ok) {
+        const data = await res.json()
+        setOrders(Array.isArray(data) ? data.map(normalizeId) : [])
+      }
+    } catch (err) {
+      console.error('Error fetching current month orders:', err)
+    }
+  }, [])
+
   useEffect(() => {
-    refreshData()
-  }, [refreshData])
+    const initData = async () => {
+      await refreshData()
+      await fetchCurrentMonthOrders()
+    }
+    initData()
+  }, [refreshData, fetchCurrentMonthOrders])
 
   const addMaterial = async (m: Omit<Material, '_id' | 'id'>) => {
     const res = await fetch('/api/cnc/materials', {
@@ -405,3 +426,4 @@ export function useCNC() {
 
 export const useApp = useCNC
 export const AppProvider = CNCProvider
+                                                                                                          
