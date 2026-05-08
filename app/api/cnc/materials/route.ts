@@ -3,6 +3,17 @@ import dbConnect from '@/lib/db/mongodb'
 import { Material } from '@/lib/models/cnc-shop'
 import { materialSchema } from '@/lib/validations'
 
+/**
+ * @swagger
+ * /api/cnc/materials:
+ *   get:
+ *     tags:
+ *       - Materials
+ *     summary: Get materials
+ *     responses:
+ *       200:
+ *         description: Success
+ */
 export async function GET(request: NextRequest) {
     try {
         await dbConnect()
@@ -53,6 +64,17 @@ export async function GET(request: NextRequest) {
     }
 }
 
+/**
+ * @swagger
+ * /api/cnc/materials:
+ *   post:
+ *     tags:
+ *       - Materials
+ *     summary: Create material
+ *     responses:
+ *       200:
+ *         description: Success
+ */
 export async function POST(request: NextRequest) {
     try {
         await dbConnect()

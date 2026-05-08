@@ -3,6 +3,17 @@ import dbConnect from '@/lib/db/mongodb'
 import { StockAdjustment, Material } from '@/lib/models/cnc-shop'
 import { stockAdjustmentSchema, formatValidationErrors } from '@/lib/validations'
 
+/**
+ * @swagger
+ * /api/cnc/adjustments:
+ *   get:
+ *     tags:
+ *       - Adjustments
+ *     summary: Get adjustments
+ *     responses:
+ *       200:
+ *         description: Success
+ */
 export async function GET() {
     try {
         await dbConnect()
@@ -14,6 +25,17 @@ export async function GET() {
     }
 }
 
+/**
+ * @swagger
+ * /api/cnc/adjustments:
+ *   post:
+ *     tags:
+ *       - Adjustments                                                                                      
+ *     summary: Create adjustment
+ *     responses:
+ *       200:
+ *         description: Success
+ */
 export async function POST(request: NextRequest) {
     try {
         await dbConnect()

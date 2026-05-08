@@ -3,6 +3,17 @@ import dbConnect from '@/lib/db/mongodb'
 import { CNCClient } from '@/lib/models/cnc-shop'
 import { cncClientSchema } from '@/lib/validations'
 
+/**
+ * @swagger
+ * /api/cnc/clients:
+ *   get:
+ *     tags:
+ *       - CNC Clients
+ *     summary: Get CNC clients
+ *     responses:
+ *       200:
+ *         description: Success
+ */
 export async function GET(request: NextRequest) {
     try {
         await dbConnect()
@@ -56,6 +67,17 @@ export async function GET(request: NextRequest) {
     }
 }
 
+/**
+ * @swagger
+ * /api/cnc/clients:
+ *   post:
+ *     tags:
+ *       - CNC Clients
+ *     summary: Create CNC client
+ *     responses:
+ *       200:
+ *         description: Success
+ */
 export async function POST(request: NextRequest) {
     try {
         await dbConnect()

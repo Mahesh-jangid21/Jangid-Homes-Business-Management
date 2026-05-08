@@ -2,6 +2,23 @@ import { NextRequest, NextResponse } from 'next/server'
 import dbConnect from '@/lib/db/mongodb'
 import { CNCClient } from '@/lib/models/cnc-shop'
 
+/**
+ * @swagger
+ * /api/cnc/clients/{id}:
+ *   get:
+ *     tags:
+ *       - CNC Clients
+ *     summary: Get CNC client by ID
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Success
+ */
 export async function GET(
     request: NextRequest,
     { params }: { params: Promise<{ id: string }> }
@@ -20,6 +37,23 @@ export async function GET(
     }
 }
 
+/**
+ * @swagger
+ * /api/cnc/clients/{id}:
+ *   put:
+ *     tags:
+ *       - CNC Clients
+ *     summary: Update CNC client
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Success
+ */
 export async function PUT(
     request: NextRequest,
     { params }: { params: Promise<{ id: string }> }
@@ -39,6 +73,23 @@ export async function PUT(
     }
 }
 
+/**
+ * @swagger
+ * /api/cnc/clients/{id}:
+ *   delete:
+ *     tags:
+ *       - CNC Clients
+ *     summary: Delete CNC client
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Success
+ */
 export async function DELETE(
     request: NextRequest,
     { params }: { params: Promise<{ id: string }> }

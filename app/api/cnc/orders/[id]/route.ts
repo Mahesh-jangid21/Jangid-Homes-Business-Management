@@ -2,6 +2,23 @@ import { NextRequest, NextResponse } from 'next/server'
 import dbConnect from '@/lib/db/mongodb'
 import { Order, Material } from '@/lib/models/cnc-shop'
 
+/**
+ * @swagger
+ * /api/cnc/orders/{id}:
+ *   get:
+ *     tags:
+ *       - Orders
+ *     summary: Get order by ID
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Success
+ */
 export async function GET(
     request: NextRequest,
     { params }: { params: Promise<{ id: string }> }
@@ -20,6 +37,23 @@ export async function GET(
     }
 }
 
+/**
+ * @swagger
+ * /api/cnc/orders/{id}:
+ *   put:
+ *     tags:
+ *       - Orders
+ *     summary: Update order
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Success
+ */
 export async function PUT(
     request: NextRequest,
     { params }: { params: Promise<{ id: string }> }
@@ -57,6 +91,23 @@ export async function PUT(
     }
 }
 
+/**
+ * @swagger
+ * /api/cnc/orders/{id}:
+ *   delete:
+ *     tags:
+ *       - Orders
+ *     summary: Delete order
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Success
+ */
 export async function DELETE(
     request: NextRequest,
     { params }: { params: Promise<{ id: string }> }

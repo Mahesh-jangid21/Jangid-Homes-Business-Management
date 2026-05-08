@@ -30,6 +30,17 @@ async function generateOrderNumber(): Promise<string> {
     return `${prefix}-${String(count).padStart(3, "0")}`
 }
 
+/**
+ * @swagger
+ * /api/cnc/orders:
+ *   get:
+ *     tags:
+ *       - Orders
+ *     summary: Get orders
+ *     responses:
+ *       200:
+ *         description: Success
+ */
 export async function GET(request: NextRequest) {
     try {
         await dbConnect()
@@ -96,6 +107,17 @@ export async function GET(request: NextRequest) {
     }
 }
 
+/**
+ * @swagger
+ * /api/cnc/orders:
+ *   post:
+ *     tags:
+ *       - Orders
+ *     summary: Create order
+ *     responses:
+ *       200:
+ *         description: Success
+ */
 export async function POST(request: NextRequest) {
     try {
         await dbConnect()
