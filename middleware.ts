@@ -9,9 +9,10 @@ export async function middleware(req: NextRequest) {
     const isApiRoute = req.nextUrl.pathname.startsWith('/api')
     const isAuthRoute = req.nextUrl.pathname.startsWith('/api/auth')
     const isSetupRoute = req.nextUrl.pathname.startsWith('/api/setup')
+const isOpenApiRoute = req.nextUrl.pathname.startsWith('/api/openapi')
 
     // Allow auth routes and setup route
-    if (isAuthRoute || isSetupRoute) {
+    if (isAuthRoute || isSetupRoute || isOpenApiRoute) {
         return NextResponse.next()
     }
 
@@ -40,7 +41,7 @@ export const config = {
     matcher: [
         /*
          * Match all request paths except:
-         * - _next/static (static files)
+         * - _next/static (static files)    
          * - _next/image (image optimization files)
          * - favicon.ico (favicon file)
          * - public files (images, etc.)
