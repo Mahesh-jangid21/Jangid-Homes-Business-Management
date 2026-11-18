@@ -1,12 +1,12 @@
 import mongoose, { Schema, Document } from 'mongoose'
 
-export type BusinessType = 'cnc-shop' | 'interiors' | 'drapes'
+export type BusinessType = 'cnc-shop'
 
 export interface IUser extends Document {
     email: string
     password: string
     name: string
-    role: 'admin' | 'user'
+    role: 'admin' | 'user' | 'staff'
     allowedBusinesses: BusinessType[]
     createdAt: Date
     updatedAt: Date
@@ -32,13 +32,13 @@ const UserSchema = new Schema<IUser>(
         },
         role: {
             type: String,
-            enum: ['admin', 'user'],
+            enum: ['admin', 'user', 'staff'],
             default: 'user',
         },
         allowedBusinesses: {
             type: [String],
-            enum: ['cnc-shop', 'interiors', 'drapes'],
-            default: ['cnc-shop', 'interiors', 'drapes'], // Default all for admin
+            enum: ['cnc-shop'],
+            default: ['cnc-shop'],
         },
     },
     { timestamps: true }

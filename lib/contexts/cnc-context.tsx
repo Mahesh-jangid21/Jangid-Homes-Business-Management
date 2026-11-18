@@ -52,16 +52,24 @@ export type Order = {
   }
   designType: string
   materials: {
-    materialId: string
+    materialId?: string
     materialSnapshot?: {  // Snapshot of material data at order time
       type: string
-      size: string
-      thickness: number
+      size?: string
+      thickness?: number
     }
     quantity: number
     width?: number
     height?: number
     cost: number
+    isClientMaterial?: boolean
+    materialUsageType?: 'full_sheet' | 'wastage_only' | 'full_plus_wastage'
+    extraWastageWidth?: number
+    extraWastageHeight?: number
+    extraWastagePieces?: number
+    extraWastageCost?: number
+    pieces?: number
+    wastageQuantity?: number
   }[]
   labourCost: number
   totalValue: number
@@ -73,8 +81,19 @@ export type Order = {
     account?: 'Kamal Jangid' | 'Hiralal Jangid'
   }[]
   balanceAmount: number
-  deliveryDate: string
-  status: "Pending" | "In Progress" | "Completed" | "Billed"
+  deliveryDate?: string
+  status:
+    | "Pending"
+    | "Quotation Sent"
+    | "Design Pending"
+    | "Design Sent"
+    | "Design Approved"
+    | "In Progress"
+    | "Ready for Pickup"
+    | "Completed"
+    | "Delivered"
+    | "Billed"
+    | "Cancelled"
 }
 
 export type Expense = {
@@ -301,7 +320,11 @@ export function CNCProvider({ children }: { children: ReactNode }) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(o),
     })
-    if (!res.ok) throw new Error('Failed to add order')
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}))
+      const errorMsg = errData.error || (errData.details ? errData.details.map((d: any) => d.message).join(', ') : 'Failed to create order')
+      throw new Error(errorMsg)
+    }
     const newOrder = await res.json()
     setOrders((prev) => [normalizeId(newOrder), ...prev])
     await refreshData()

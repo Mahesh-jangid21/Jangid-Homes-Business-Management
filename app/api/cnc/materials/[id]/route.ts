@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import dbConnect from '@/lib/db/mongodb'
 import { Material } from '@/lib/models/cnc-shop'
+import { logActivity } from '@/lib/audit-logger'
 
 /**
  * @swagger
@@ -66,6 +67,14 @@ export async function PUT(
         if (!material) {
             return NextResponse.json({ error: 'Material not found' }, { status: 404 })
         }
+
+        logActivity({
+            action: 'UPDATE_MATERIAL',
+            module: 'Inventory',
+            description: `Updated Material: ${material.type} - ${material.size} (${material.thickness}mm) • Current Stock: ${material.currentStock}`,
+            metadata: { type: material.type, size: material.size, thickness: material.thickness, stock: material.currentStock, rate: material.rate }
+        })
+
         return NextResponse.json(material)
     } catch (error) {
         console.error('Error updating material:', error)
@@ -101,6 +110,14 @@ export async function DELETE(
         if (!material) {
             return NextResponse.json({ error: 'Material not found' }, { status: 404 })
         }
+
+        logActivity({
+            action: 'DELETE_MATERIAL',
+            module: 'Inventory',
+            description: `Deleted Material: ${material.type} - ${material.size} (${material.thickness}mm)`,
+            metadata: { type: material.type, size: material.size, thickness: material.thickness }
+        })
+
         return NextResponse.json({ message: 'Material deleted successfully' })
     } catch (error) {
         console.error('Error deleting material:', error)

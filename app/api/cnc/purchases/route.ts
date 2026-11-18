@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import dbConnect from '@/lib/db/mongodb'
 import { Purchase, Material } from '@/lib/models/cnc-shop'
 import { purchaseSchema, formatValidationErrors } from '@/lib/validations'
+import { logActivity } from '@/lib/audit-logger'
 
 export async function GET() {
     try {
@@ -36,6 +37,13 @@ export async function POST(request: NextRequest) {
                 $inc: { currentStock: validation.data.quantity }
             })
         }
+
+        logActivity({
+            action: 'CREATE_PURCHASE',
+            module: 'Purchases',
+            description: `Recorded Purchase: ${validation.data.quantity} sheets from ${validation.data.supplier || 'Supplier'} (Total: ₹${validation.data.total})`,
+            metadata: { supplier: validation.data.supplier, quantity: validation.data.quantity, totalAmount: validation.data.total }
+        })
 
         return NextResponse.json(purchase, { status: 201 })
     } catch (error) {

@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { useCNC, type Client } from "@/lib/contexts/cnc-context"
+import { usePermissions } from "@/lib/hooks/use-permissions"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -14,6 +15,7 @@ const clientTypes = ["Architect", "Contractor", "Shop", "Individual", "Other"] a
 
 export function CNCClients() {
   const { clients, orders, loading, addClient, updateClient, deleteClient } = useCNC()
+  const { canViewFinancials } = usePermissions()
   const [showAddClient, setShowAddClient] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const [editingClient, setEditingClient] = useState<Client | null>(null)
@@ -128,7 +130,7 @@ export function CNCClients() {
               Add Client
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-lg w-[95vw] rounded-2xl">
+          <DialogContent className="max-w-lg w-[95vw] rounded-2xl p-6 overflow-y-auto max-h-[calc(100dvh-4rem)]">
             <DialogHeader>
               <DialogTitle>Add New Client</DialogTitle>
             </DialogHeader>
@@ -152,7 +154,7 @@ export function CNCClients() {
                   </p>
                 )}
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label className={errors.mobile ? "text-destructive" : ""}>Mobile Number</Label>
                   <Input
@@ -277,33 +279,47 @@ export function CNCClients() {
                     </div>
 
                     {/* Stats - Desktop */}
-                    <div className="hidden sm:flex items-center gap-4">
-                      <div className="text-right">
-                        <p className="text-lg font-bold text-foreground">₹{totalBusiness.toLocaleString("en-IN")}</p>
+                    {canViewFinancials ? (
+                      <div className="hidden sm:flex items-center gap-4">
+                        <div className="text-right">
+                          <p className="text-lg font-bold text-foreground">₹{totalBusiness.toLocaleString("en-IN")}</p>
+                          <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{clientOrders.length} orders</p>
+                        </div>
+                        {outstanding > 0 && (
+                          <div className="text-right">
+                            <p className="text-base font-bold text-amber-600">₹{outstanding.toLocaleString("en-IN")}</p>
+                            <p className="text-[10px] font-medium uppercase tracking-wide text-amber-600/70">pending</p>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="hidden sm:flex items-center gap-4">
+                        <div className="text-right">
+                          <p className="text-sm font-semibold text-foreground">{clientOrders.length} orders</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Stats - Mobile */}
+                  {canViewFinancials ? (
+                    <div className="flex sm:hidden items-center justify-between mt-3 pt-3 border-t border-border/50">
+                      <div>
+                        <p className="text-base font-bold text-foreground">₹{totalBusiness.toLocaleString("en-IN")}</p>
                         <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{clientOrders.length} orders</p>
                       </div>
                       {outstanding > 0 && (
                         <div className="text-right">
-                          <p className="text-base font-bold text-amber-600">₹{outstanding.toLocaleString("en-IN")}</p>
+                          <p className="text-sm font-bold text-amber-600">₹{outstanding.toLocaleString("en-IN")}</p>
                           <p className="text-[10px] font-medium uppercase tracking-wide text-amber-600/70">pending</p>
                         </div>
                       )}
                     </div>
-                  </div>
-
-                  {/* Stats - Mobile */}
-                  <div className="flex sm:hidden items-center justify-between mt-3 pt-3 border-t border-border/50">
-                    <div>
-                      <p className="text-base font-bold text-foreground">₹{totalBusiness.toLocaleString("en-IN")}</p>
-                      <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{clientOrders.length} orders</p>
+                  ) : (
+                    <div className="flex sm:hidden items-center justify-between mt-3 pt-3 border-t border-border/50">
+                      <p className="text-xs font-semibold text-muted-foreground">{clientOrders.length} orders</p>
                     </div>
-                    {outstanding > 0 && (
-                      <div className="text-right">
-                        <p className="text-sm font-bold text-amber-600">₹{outstanding.toLocaleString("en-IN")}</p>
-                        <p className="text-[10px] font-medium uppercase tracking-wide text-amber-600/70">pending</p>
-                      </div>
-                    )}
-                  </div>
+                  )}
 
                   {/* Actions */}
                   <div className="flex items-center justify-end gap-1.5 mt-3 pt-3 border-t border-border/50">
@@ -328,7 +344,7 @@ export function CNCClients() {
       )}
 
       <Dialog open={!!editingClient} onOpenChange={() => setEditingClient(null)}>
-        <DialogContent className="max-w-lg w-[95vw] rounded-2xl">
+        <DialogContent className="max-w-lg w-[95vw] rounded-2xl p-6 overflow-y-auto max-h-[calc(100dvh-4rem)]">
           <DialogHeader>
             <DialogTitle>Edit Client</DialogTitle>
           </DialogHeader>
@@ -342,7 +358,7 @@ export function CNCClients() {
                   autoFocus
                 />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Mobile Number</Label>
                   <Input

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import dbConnect from '@/lib/db/mongodb'
 import { Material } from '@/lib/models/cnc-shop'
 import { materialSchema } from '@/lib/validations'
+import { logActivity } from '@/lib/audit-logger'
 
 /**
  * @swagger
@@ -90,6 +91,22 @@ export async function POST(request: NextRequest) {
         }
 
         const material = await Material.create(validation.data)
+
+        logActivity({
+            action: 'CREATE_MATERIAL',
+            module: 'Inventory',
+            description: `Added Material: ${material.type} - ${material.size} (${material.thickness}mm) • Initial Stock: ${material.currentStock}`,
+            metadata: { type: material.type, size: material.size, thickness: material.thickness, stock: material.currentStock, rate: material.rate }
+        })
+4
+
+        logActivity({
+            action: 'CREATE_MATERIAL',
+            module: 'Inventory',
+            description: `Added Material: ${material.type} - ${material.size} (${material.thickness}mm) • Initial Stock: ${material.currentStock}`,
+            metadata: { type: material.type, size: material.size, thickness: material.thickness, stock: material.currentStock, rate: material.rate }
+        })
+
         return NextResponse.json(material, { status: 201 })
     } catch (error) {
         console.error('Error creating material:', error)

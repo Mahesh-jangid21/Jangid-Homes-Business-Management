@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import dbConnect from '@/lib/db/mongodb'
 import { StockAdjustment, Material } from '@/lib/models/cnc-shop'
 import { stockAdjustmentSchema, formatValidationErrors } from '@/lib/validations'
+import { logActivity } from '@/lib/audit-logger'
 
 /**
  * @swagger
@@ -74,6 +75,13 @@ export async function POST(request: NextRequest) {
         // Update material stock
         material.currentStock = newStock
         await material.save()
+
+        logActivity({
+            action: 'STOCK_ADJUSTMENT',
+            module: 'Inventory',
+            description: `Stock Audit: ${material.type} (${material.size}) adjusted from ${previousStock} to ${newStock} (${adjustmentAmount >= 0 ? `+${adjustmentAmount}` : adjustmentAmount})`,
+            metadata: { material: material.type, previousStock, newStock, adjustment: adjustmentAmount, reason: reason || 'Manual Stock Audit' }
+        })
 
         return NextResponse.json(adjustment, { status: 201 })
     } catch (error: unknown) {

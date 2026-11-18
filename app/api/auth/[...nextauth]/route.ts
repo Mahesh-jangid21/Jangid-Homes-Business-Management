@@ -46,7 +46,7 @@ export const authOptions: NextAuthOptions = {
                         email: user.email,
                         name: user.name,
                         role: user.role,
-                        allowedBusinesses: user.allowedBusinesses || ['cnc-shop', 'interiors', 'drapes'],
+                        allowedBusinesses: user.allowedBusinesses || ['cnc-shop'],
                     }
                 } catch (error) {
                     console.error('Auth error:', error)

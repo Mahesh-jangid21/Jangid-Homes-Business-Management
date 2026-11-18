@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import dbConnect from '@/lib/db/mongodb'
 import { CNCClient } from '@/lib/models/cnc-shop'
 import { cncClientSchema } from '@/lib/validations'
+import { logActivity } from '@/lib/audit-logger'
 
 /**
  * @swagger
@@ -93,6 +94,14 @@ export async function POST(request: NextRequest) {
         }
 
         const client = await CNCClient.create(validation.data)
+
+        logActivity({
+            action: 'CREATE_CLIENT',
+            module: 'Clients',
+            description: `Added Client: ${client.name} (${client.mobile || 'No mobile'}, ${client.type || 'Individual'})`,
+            metadata: { name: client.name, mobile: client.mobile, type: client.type }
+        })
+
         return NextResponse.json(client, { status: 201 })
     } catch (error) {
         console.error('Error creating client:', error)

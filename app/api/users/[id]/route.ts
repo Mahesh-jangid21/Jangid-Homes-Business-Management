@@ -11,8 +11,8 @@ const updateUserSchema = z.object({
     email: z.string().email('Invalid email address').optional(),
     password: z.string().min(8, 'Password must be at least 8 characters').optional(),
     name: z.string().min(1, 'Name is required').optional(),
-    role: z.enum(['admin', 'user']).optional(),
-    allowedBusinesses: z.array(z.enum(['cnc-shop', 'interiors', 'drapes'])).min(1).optional(),
+    role: z.enum(['admin', 'user', 'staff']).optional(),
+    allowedBusinesses: z.array(z.enum(['cnc-shop'])).min(1).optional(),
 })
 
 // PUT - Update user (admin only)

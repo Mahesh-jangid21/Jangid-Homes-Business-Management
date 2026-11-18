@@ -107,12 +107,12 @@ export function CNCExpenses() {
                 Add Expense
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-lg w-[95vw] rounded-2xl">
+            <DialogContent className="max-w-lg w-[95vw] rounded-2xl p-6 overflow-y-auto max-h-[calc(100dvh-4rem)]">
               <DialogHeader>
                 <DialogTitle>Add Expense</DialogTitle>
               </DialogHeader>
               <form onSubmit={(e) => { e.preventDefault(); handleAddExpense(); }} className="space-y-4 pt-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Date</Label>
                     <Input
@@ -148,7 +148,7 @@ export function CNCExpenses() {
                     placeholder="What was this expense for?"
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Amount (₹)</Label>
                     <Input

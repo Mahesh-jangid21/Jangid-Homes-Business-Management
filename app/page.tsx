@@ -2,9 +2,10 @@
 
 import { useState, useEffect, useRef, Suspense } from "react"
 import { useRouter, usePathname, useSearchParams } from "next/navigation"
+import { useSession } from "next-auth/react"
 // Shared components
 import { PortalSidebar } from "@/components/shared/portal-sidebar"
-import { ComingSoon } from "@/components/shared/coming-soon"
+import { ReportsGuard } from "@/components/shared/reports-guard"
 // CNC Shop components
 import { CNCDashboard } from "@/components/cnc/dashboard"
 import { CNCInventory } from "@/components/cnc/inventory"
@@ -13,49 +14,44 @@ import { CNCOrders } from "@/components/cnc/orders"
 import { CNCExpenses } from "@/components/cnc/expenses"
 import { CNCReports } from "@/components/cnc/reports"
 import { ClientSearch } from "@/components/cnc/client-search"
-// Interiors components
-import { InteriorsDashboard } from "@/components/interiors/dashboard"
-import { InteriorsClients } from "@/components/interiors/clients"
-import { InteriorsProjectsModule } from "@/components/interiors/projects"
-import { InteriorsExpensesModule } from "@/components/interiors/expenses"
-import { InteriorsReportsModule } from "@/components/interiors/reports"
 // Shared admin components
 import { UsersManagement } from "@/components/shared/users"
+import { AuditLogsManagement } from "@/components/admin/audit-logs"
 // Context providers
 import { CNCProvider } from "@/lib/contexts/cnc-context"
-import { PortalProvider, usePortal } from "@/lib/contexts/portal-context"
-import { InteriorsProvider } from "@/lib/contexts/interiors-context"
+import { PortalProvider } from "@/lib/contexts/portal-context"
+import { STAFF_RESTRICTED_MODULES } from "@/lib/permissions"
 
 function PortalContent() {
-  const { activeBusiness } = usePortal()
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
-  const mounted = useRef(false)
+  const { data: session } = useSession()
+  const userRole = (session?.user as any)?.role as string | undefined
 
-  // Get active module from URL or default to dashboard
-  const activeModule = searchParams.get("module") || "dashboard"
+  const defaultModule = "dashboard"
+  const rawModule = searchParams.get("module") || defaultModule
+
+  // Guard: redirect staff and non-admins away from restricted modules
+  const isRestrictedForStaff = userRole === 'staff' && STAFF_RESTRICTED_MODULES.includes(rawModule as any)
+  const isRestrictedForNonAdmin = userRole !== 'admin' && (rawModule === 'users' || rawModule === 'audit-logs')
+  const activeModule = (isRestrictedForStaff || isRestrictedForNonAdmin)
+    ? 'dashboard'
+    : rawModule
+
+  // Security key to force fresh password prompt whenever Reports is clicked
+  const [reportAccessKey, setReportAccessKey] = useState(0)
 
   const setActiveModule = (module: string) => {
+    if (module === "reports") {
+      setReportAccessKey((prev) => prev + 1)
+    }
     const params = new URLSearchParams(searchParams.toString())
     params.set("module", module)
     router.replace(`${pathname}?${params.toString()}`)
   }
 
-  // Track previous business to detect changes
-  const prevBusinessRef = useRef(activeBusiness)
-
-  // Reset to dashboard when switching businesses
-  useEffect(() => {
-    // Only reset if business actually changed
-    if (prevBusinessRef.current !== activeBusiness) {
-      setActiveModule("dashboard")
-      prevBusinessRef.current = activeBusiness
-    }
-  }, [activeBusiness])
-
-  // Render CNC Shop modules
-  const renderCNCModule = () => {
+  const renderModule = () => {
     switch (activeModule) {
       case "dashboard":
         return <CNCDashboard onNavigate={setActiveModule} />
@@ -70,43 +66,17 @@ function PortalContent() {
       case "expenses":
         return <CNCExpenses />
       case "reports":
-        return <CNCReports />
+        return (
+          <ReportsGuard key={`cnc-reports-${reportAccessKey}`} onCancel={() => setActiveModule("dashboard")}>
+            <CNCReports />
+          </ReportsGuard>
+        )
       case "users":
         return <UsersManagement />
+      case "audit-logs":
+        return <AuditLogsManagement />
       default:
         return <CNCDashboard />
-    }
-  }
-
-  // Render Interiors modules
-  const renderInteriorsModule = () => {
-    switch (activeModule) {
-      case "dashboard":
-        return <InteriorsDashboard />
-      case "projects":
-        return <InteriorsProjectsModule />
-      case "clients":
-        return <InteriorsClients />
-      case "expenses":
-        return <InteriorsExpensesModule />
-      case "reports":
-        return <InteriorsReportsModule />
-      case "users":
-        return <UsersManagement />
-      default:
-        return <InteriorsDashboard />
-    }
-  }
-
-  // Render the appropriate module based on active business
-  const renderModule = () => {
-    switch (activeBusiness) {
-      case "cnc-shop":
-        return renderCNCModule()
-      case "interiors":
-        return renderInteriorsModule()
-      default:
-        return <ComingSoon />
     }
   }
 
@@ -126,11 +96,9 @@ export default function Home() {
   return (
     <PortalProvider>
       <CNCProvider>
-        <InteriorsProvider>
-          <Suspense fallback={<div className="flex items-center justify-center h-screen">Loading...</div>}>
-            <PortalContent />
-          </Suspense>
-        </InteriorsProvider>
+        <Suspense fallback={<div className="flex items-center justify-center h-screen">Loading...</div>}>
+          <PortalContent />
+        </Suspense>
       </CNCProvider>
     </PortalProvider>
   )

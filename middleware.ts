@@ -1,6 +1,7 @@
 import { getToken } from 'next-auth/jwt'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
+import { STAFF_RESTRICTED_API_PATHS } from '@/lib/permissions'
 
 export async function middleware(req: NextRequest) {
     const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET })
@@ -22,6 +23,18 @@ const isOpenApiRoute = req.nextUrl.pathname.startsWith('/api/openapi')
             { error: 'Unauthorized' },
             { status: 401 }
         )
+    }
+
+    // Block staff from restricted API routes
+    const userRole = token?.role as string | undefined
+    if (isApiRoute && userRole === 'staff') {
+        const path = req.nextUrl.pathname
+        const isRestricted = STAFF_RESTRICTED_API_PATHS.some((restricted) =>
+            path.startsWith(restricted)
+        )
+        if (isRestricted) {
+            return NextResponse.json({ error: 'Access denied' }, { status: 403 })
+        }
     }
 
     // Redirect to login if not authenticated

@@ -1,7 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
+import mongoose from 'mongoose'
 import dbConnect from '@/lib/db/mongodb'
-import { Order, Material, CNCClient } from '@/lib/models/cnc-shop'
+import { Order, Material, CNCClient, Wastage } from '@/lib/models/cnc-shop'
 import { orderSchema } from '@/lib/validations'
+import { logActivity } from '@/lib/audit-logger'
+
+function parseSheetArea(sizeStr?: string): number {
+    if (!sizeStr) return 32
+    const parts = sizeStr.toLowerCase().split('x')
+    if (parts.length === 2) {
+        const w = parseFloat(parts[0])
+        const h = parseFloat(parts[1])
+        if (!isNaN(w) && !isNaN(h) && w > 0 && h > 0) return w * h
+    }
+    return 32
+}
 
 // Generate unique order number server-side
 async function generateOrderNumber(): Promise<string> {
@@ -27,7 +40,13 @@ async function generateOrderNumber(): Promise<string> {
         }
     }
 
-    return `${prefix}-${String(count).padStart(3, "0")}`
+    let candidate = `${prefix}-${String(count).padStart(3, "0")}`
+    while (await Order.exists({ orderNumber: candidate })) {
+        count++
+        candidate = `${prefix}-${String(count).padStart(3, "0")}`
+    }
+
+    return candidate
 }
 
 /**
@@ -139,6 +158,9 @@ export async function POST(request: NextRequest) {
         orderData.orderNumber = await generateOrderNumber()
 
         // Fetch client data and create snapshot
+        if (!mongoose.Types.ObjectId.isValid(orderData.clientId)) {
+            return NextResponse.json({ error: 'Invalid client ID selected' }, { status: 400 })
+        }
         const client = await CNCClient.findById(orderData.clientId)
         if (!client) {
             return NextResponse.json({ error: 'Client not found' }, { status: 400 })
@@ -153,15 +175,28 @@ export async function POST(request: NextRequest) {
         // Fetch material data and create snapshots for each material
         if (orderData.materials && Array.isArray(orderData.materials)) {
             for (const mat of orderData.materials) {
-                if (mat.materialId) {
-                    const material = await Material.findById(mat.materialId)
-                    if (material) {
-                        mat.materialSnapshot = {
-                            type: material.type,
-                            size: material.size,
-                            thickness: material.thickness
-                        }
+                // If client material or no valid ID, ensure materialId is completely removed to avoid Mongoose CastError on ObjectId
+                if (mat.isClientMaterial || !mat.materialId || !mongoose.Types.ObjectId.isValid(mat.materialId)) {
+                    delete mat.materialId
+                    continue
+                }
+
+                const material = await Material.findById(mat.materialId)
+                if (material) {
+                    mat.materialSnapshot = {
+                        type: material.type,
+                        size: material.size,
+                        thickness: material.thickness
                     }
+                }
+            }
+        }
+
+        // Clean up payments array
+        if (orderData.payments && Array.isArray(orderData.payments)) {
+            for (const p of orderData.payments) {
+                if (!p.account) {
+                    delete p.account
                 }
             }
         }
@@ -180,21 +215,83 @@ export async function POST(request: NextRequest) {
 
         const order = await Order.create(orderData)
 
-        // Deduct materials from inventory
+        // Process inventory deductions and custom size wastage logging
         if (orderData.materials && Array.isArray(orderData.materials)) {
             for (const mat of orderData.materials) {
-                if (mat.materialId && mat.quantity) {
-                    await Material.findByIdAndUpdate(mat.materialId, {
-                        $inc: { currentStock: -mat.quantity }
-                    })
+                // If material is provided by client OR is only wastage/scrap material, do not deduct full sheet stock and do not log wastage
+                if (mat.isClientMaterial || mat.materialUsageType === 'wastage_only') {
+                    continue
+                }
+
+                // If material is full sheet + wastage scrap, deduct ONLY the full sheet count from inventory
+                if (mat.materialUsageType === 'full_plus_wastage') {
+                    if (mat.materialId && mat.quantity && mat.quantity > 0) {
+                        await Material.findByIdAndUpdate(mat.materialId, {
+                            $inc: { currentStock: -mat.quantity }
+                        })
+                    }
+                    continue
+                }
+
+                if (mat.materialId) {
+                    const material = await Material.findById(mat.materialId)
+                    if (!material) continue
+
+                    const isCustomSize = Boolean(mat.width && mat.height && mat.width > 0 && mat.height > 0)
+
+                    if (isCustomSize && mat.width && mat.height) {
+                        const sheetArea = parseSheetArea(material.size)
+                        const pieces = mat.pieces || 1
+                        const totalCustomArea = (mat.width * mat.height) * pieces
+                        // Full sheets pulled from stock to cut this custom piece
+                        const sheetsNeeded = Math.max(1, Math.ceil(totalCustomArea / sheetArea))
+                        const sheetFractionUsed = totalCustomArea / sheetArea
+                        const leftoverSheets = Math.max(0, parseFloat((sheetsNeeded - sheetFractionUsed).toFixed(3)))
+                        const leftoverAreaSqFt = parseFloat((leftoverSheets * sheetArea).toFixed(1))
+
+                        // Deduct full sheets pulled from inventory
+                        await Material.findByIdAndUpdate(mat.materialId, {
+                            $inc: { currentStock: -sheetsNeeded }
+                        })
+
+                        // Record leftover offcut into Wastage collection
+                        if (leftoverSheets > 0.005) {
+                            await Wastage.create({
+                                materialId: mat.materialId,
+                                date: orderData.date ? new Date(orderData.date) : new Date(),
+                                quantity: leftoverSheets,
+                                reason: `Offcut from Order ${order.orderNumber} (Cut ${mat.width}x${mat.height} ft [${pieces} pcs] from ${material.size} sheet, leftover: ${leftoverAreaSqFt} sq ft)`,
+                            })
+                        }
+                    } else if (mat.quantity) {
+                        // Standard full sheets used
+                        await Material.findByIdAndUpdate(mat.materialId, {
+                            $inc: { currentStock: -mat.quantity }
+                        })
+                    }
                 }
             }
         }
 
+        // Record audit log entry
+        logActivity({
+            action: 'CREATE_ORDER',
+            module: 'Orders',
+            description: `Created Order ${order.orderNumber} for ${order.clientSnapshot?.name || 'Client'} (Total: ₹${order.totalValue}, Advance: ₹${order.advanceReceived})`,
+            metadata: {
+                orderNumber: order.orderNumber,
+                client: order.clientSnapshot?.name,
+                totalValue: order.totalValue,
+                advance: order.advanceReceived,
+                materialsCount: order.materials?.length || 0,
+            }
+        })
+
         return NextResponse.json(order, { status: 201 })
     } catch (error: unknown) {
         console.error('Error creating order:', error)
-        return NextResponse.json({ error: 'Failed to create order' }, { status: 500 })
+        const errorMessage = error instanceof Error ? error.message : 'Failed to create order'
+        return NextResponse.json({ error: errorMessage }, { status: 500 })
     }
 }
 

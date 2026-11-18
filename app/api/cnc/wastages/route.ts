@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import dbConnect from '@/lib/db/mongodb'
 import { Wastage, Material } from '@/lib/models/cnc-shop'
 import { wastageSchema, formatValidationErrors } from '@/lib/validations'
+import { logActivity } from '@/lib/audit-logger'
 
 export async function GET() {
     try {
@@ -36,6 +37,13 @@ export async function POST(request: NextRequest) {
                 $inc: { currentStock: -validation.data.quantity }
             })
         }
+
+        logActivity({
+            action: 'CREATE_WASTAGE',
+            module: 'Wastage',
+            description: `Recorded Wastage: ${validation.data.quantity} sheets (${validation.data.reason})`,
+            metadata: { quantity: validation.data.quantity, reason: validation.data.reason }
+        })
 
         return NextResponse.json(wastage, { status: 201 })
     } catch (error) {

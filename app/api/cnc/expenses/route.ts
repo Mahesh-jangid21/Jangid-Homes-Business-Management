@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import dbConnect from '@/lib/db/mongodb'
 import { CNCExpense } from '@/lib/models/cnc-shop'
 import { cncExpenseSchema, formatValidationErrors } from '@/lib/validations'
+import { logActivity } from '@/lib/audit-logger'
 
 export async function GET() {
     try {
@@ -29,6 +30,14 @@ export async function POST(request: NextRequest) {
         }
 
         const expense = await CNCExpense.create(validation.data)
+
+        logActivity({
+            action: 'CREATE_EXPENSE',
+            module: 'Expenses',
+            description: `Recorded Expense: ₹${expense.amount} for "${expense.description}" (${expense.category} via ${expense.paymentMode})`,
+            metadata: { amount: expense.amount, category: expense.category, description: expense.description, paymentMode: expense.paymentMode }
+        })
+
         return NextResponse.json(expense, { status: 201 })
     } catch (error) {
         console.error('Error creating expense:', error)

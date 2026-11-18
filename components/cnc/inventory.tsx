@@ -189,12 +189,12 @@ export function CNCInventory() {
                 Material
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-lg w-[95vw] rounded-2xl">
+            <DialogContent className="max-w-lg w-[95vw] rounded-2xl p-6 overflow-y-auto max-h-[calc(100dvh-4rem)]">
               <DialogHeader>
                 <DialogTitle>Add New Material</DialogTitle>
               </DialogHeader>
               <div className="space-y-4 pt-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Material Type</Label>
                     <Select
@@ -229,7 +229,7 @@ export function CNCInventory() {
                     </Select>
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Thickness (mm)</Label>
                     <Input
@@ -253,7 +253,7 @@ export function CNCInventory() {
                     />
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Rate per Sheet (₹)</Label>
                     <Input
@@ -286,7 +286,7 @@ export function CNCInventory() {
                 Purchase
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-lg w-[95vw] rounded-2xl">
+            <DialogContent className="max-w-lg w-[95vw] rounded-2xl p-6 overflow-y-auto max-h-[calc(100dvh-4rem)]">
               <DialogHeader>
                 <DialogTitle>Record Purchase</DialogTitle>
               </DialogHeader>
@@ -312,7 +312,7 @@ export function CNCInventory() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Date</Label>
                     <Input
@@ -329,7 +329,7 @@ export function CNCInventory() {
                     />
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Quantity (sheets)</Label>
                     <Input
@@ -370,7 +370,7 @@ export function CNCInventory() {
                 Wastage
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-lg w-[95vw] rounded-2xl">
+            <DialogContent className="max-w-lg w-[95vw] rounded-2xl p-6 overflow-y-auto max-h-[calc(100dvh-4rem)]">
               <DialogHeader>
                 <DialogTitle>Record Wastage</DialogTitle>
               </DialogHeader>
@@ -396,7 +396,7 @@ export function CNCInventory() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Date</Label>
                     <Input
@@ -511,7 +511,7 @@ export function CNCInventory() {
               ))}
 
               <Dialog open={!!showReconcile} onOpenChange={(o) => !o && setShowReconcile(null)}>
-                <DialogContent className="max-w-md w-[95vw] rounded-2xl">
+                <DialogContent className="max-w-md w-[95vw] rounded-2xl p-6 overflow-y-auto max-h-[calc(100dvh-4rem)]">
                   <DialogHeader>
                     <DialogTitle>Stock Audit / Reconciliation</DialogTitle>
                   </DialogHeader>

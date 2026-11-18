@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import dbConnect from '@/lib/db/mongodb'
 import { Order, Material } from '@/lib/models/cnc-shop'
+import { logActivity } from '@/lib/audit-logger'
 
 /**
  * @swagger
@@ -79,11 +80,20 @@ export async function PUT(
         }
 
         // Validate: payment shouldn't exceed total value
-        if (body.advanceReceived !== undefined && body.advanceReceived > (existingOrder.totalValue || 0)) {
+        const effectiveTotal = body.totalValue !== undefined ? body.totalValue : (existingOrder.totalValue || 0)
+        if (body.advanceReceived !== undefined && body.advanceReceived > effectiveTotal) {
             return NextResponse.json({ error: 'Payment cannot exceed total value' }, { status: 400 })
         }
 
         const order = await Order.findByIdAndUpdate(id, body, { new: true })
+        if (order) {
+            logActivity({
+                action: 'UPDATE_ORDER',
+                module: 'Orders',
+                description: `Updated Order ${order.orderNumber} (Status: ${order.status}, Total: ₹${order.totalValue}, Balance: ₹${order.balanceAmount})`,
+                metadata: { orderNumber: order.orderNumber, status: order.status, totalValue: order.totalValue, balance: order.balanceAmount }
+            })
+        }
         return NextResponse.json(order)
     } catch (error) {
         console.error('Error updating order:', error)
@@ -135,6 +145,13 @@ export async function DELETE(
 
         // Now delete the order
         await Order.findByIdAndDelete(id)
+
+        logActivity({
+            action: 'DELETE_ORDER',
+            module: 'Orders',
+            description: `Deleted Order ${order.orderNumber} (${order.clientSnapshot?.name || 'Client'}) - materials restored`,
+            metadata: { orderNumber: order.orderNumber, client: order.clientSnapshot?.name, totalValue: order.totalValue }
+        })
 
         return NextResponse.json({ message: 'Order deleted successfully, materials restored to stock' })
     } catch (error) {

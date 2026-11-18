@@ -50,7 +50,7 @@ export default function LoginPage() {
                             <Home className="w-8 h-8 text-white" />
                         </div>
                     </div>
-                    <CardTitle className="text-2xl font-bold">Jangid Homes</CardTitle>
+                    <CardTitle className="text-2xl font-bold">Shri Shyam CNC</CardTitle>
                     <CardDescription>
                         Sign in to access the Business Portal
                     </CardDescription>

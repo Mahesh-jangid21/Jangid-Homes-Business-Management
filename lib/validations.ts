@@ -69,17 +69,25 @@ export const orderSchema = z.object({
     }).optional(),
     designType: z.string().min(1, 'Design type is required'),
     materials: z.array(z.object({
-        materialId: z.string(),
+        materialId: z.string().optional().or(z.literal('')).transform(v => (v && v.trim()) ? v : undefined),
         // Material snapshot - populated server-side
         materialSnapshot: z.object({
             type: z.string(),
-            size: z.string(),
-            thickness: z.number(),
+            size: z.string().optional(),
+            thickness: z.number().optional(),
         }).optional(),
         quantity: z.number().min(0),
         width: z.number().optional(),
         height: z.number().optional(),
         cost: z.number().min(0),
+        isClientMaterial: z.boolean().optional().default(false),
+        materialUsageType: z.enum(['full_sheet', 'wastage_only', 'full_plus_wastage']).optional().default('full_sheet'),
+        extraWastageWidth: z.number().optional(),
+        extraWastageHeight: z.number().optional(),
+        extraWastagePieces: z.number().optional(),
+        extraWastageCost: z.number().optional().default(0),
+        pieces: z.number().optional().default(1),
+        wastageQuantity: z.number().optional().default(0),
     })).optional().default([]),
     labourCost: z.number().min(0).optional().default(0),
     totalValue: z.number().min(0).optional().default(0),
@@ -89,10 +97,22 @@ export const orderSchema = z.object({
         amount: z.number().min(0),
         date: dateSchema,
         method: z.enum(['Cash', 'UPI', 'Card', 'Bank']),
-        account: z.enum(['Kamal Jangid', 'Hiralal Jangid']).optional(),
+        account: z.enum(['Kamal Jangid', 'Hiralal Jangid']).or(z.literal('')).optional().transform(v => (v && v.trim()) ? (v as 'Kamal Jangid' | 'Hiralal Jangid') : undefined),
     })).optional().default([]),
-    deliveryDate: dateSchema.optional(),
-    status: z.enum(['Pending', 'In Progress', 'Completed', 'Billed']).optional().default('Pending'),
+    deliveryDate: dateSchema.or(z.literal('')).optional().transform(v => (v && v !== '') ? v : undefined),
+    status: z.enum([
+        'Pending',
+        'Quotation Sent',
+        'Design Pending',
+        'Design Sent',
+        'Design Approved',
+        'In Progress',
+        'Ready for Pickup',
+        'Completed',
+        'Delivered',
+        'Billed',
+        'Cancelled'
+    ]).optional().default('Pending'),
 })
 
 // CNC Expense validation
@@ -129,47 +149,6 @@ export const stockAdjustmentSchema = z.object({
     date: dateSchema,
     newStock: z.number().min(0, 'Stock cannot be negative'),
     reason: z.string().max(500).optional().default('Manual Stock Audit'),
-})
-
-// ==================== INTERIOR SCHEMAS ====================
-
-// Interior Client validation
-export const interiorClientSchema = z.object({
-    name: nameSchema,
-    mobile: mobileSchema,
-    email: emailSchema,
-    address: z.string().max(500).optional().default(''),
-    referredBy: z.string().max(100).optional().default(''),
-    referralType: z.enum(['Client', 'Architect', 'Contractor', 'Website', 'Social Media', 'Walk-in', 'Other']).optional().default('Walk-in'),
-    notes: z.string().max(1000).optional().default(''),
-})
-
-// Interior Project validation
-export const interiorProjectSchema = z.object({
-    projectNumber: z.string().min(1, 'Project number is required'),
-    clientId: z.string().min(1, 'Client is required'),
-    projectName: z.string().min(1, 'Project name is required').max(200),
-    siteAddress: z.string().max(500).optional().default(''),
-    projectType: z.enum(['Full Home', 'Kitchen', 'Bedroom', 'Living Room', 'Bathroom', 'Office', 'Commercial', 'Other']).optional().default('Full Home'),
-    estimatedValue: z.number().min(0).optional().default(0),
-    advanceReceived: z.number().min(0).optional().default(0),
-    balanceAmount: z.number().min(0).optional().default(0),
-    startDate: dateSchema.optional(),
-    expectedEndDate: dateSchema.optional(),
-    actualEndDate: dateSchema.optional(),
-    status: z.enum(['Enquiry', 'Quotation Sent', 'Confirmed', 'In Progress', 'On Hold', 'Completed', 'Cancelled']).optional().default('Enquiry'),
-    description: z.string().max(2000).optional().default(''),
-})
-
-// Interior Expense validation
-export const interiorExpenseSchema = z.object({
-    projectId: z.string().optional(),
-    date: dateSchema,
-    type: z.enum(['Material', 'Labour', 'Transport', 'Site Expenses', 'Designer Fee', 'Vendor Payment', 'Misc']),
-    description: z.string().min(1, 'Description is required').max(500),
-    amount: z.number().positive('Amount must be positive'),
-    paymentMode: z.enum(['Cash', 'Bank', 'UPI', 'Cheque']).optional().default('Cash'),
-    vendor: z.string().max(100).optional().default(''),
 })
 
 // ==================== HELPERS ====================

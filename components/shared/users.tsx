@@ -11,28 +11,26 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Plus, Users, Trash2, Loader2, Pencil, Shield, User, Search, Eye, EyeOff } from "lucide-react"
+import { Plus, Users, Trash2, Loader2, Pencil, Shield, User, UserCog, Search, Eye, EyeOff } from "lucide-react"
 
 interface UserData {
     id: string
     email: string
     name: string
-    role: "admin" | "user"
+    role: "admin" | "user" | "staff"
     allowedBusinesses: string[]
     createdAt: string
 }
 
 const businessOptions = [
     { id: "cnc-shop", label: "Shri Shyam CNC" },
-    { id: "interiors", label: "Jangid Homes Interiors" },
-    { id: "drapes", label: "Jangid Drapes" },
 ]
 
 interface FormData {
     email: string
     password: string
     name: string
-    role: "admin" | "user"
+    role: "admin" | "user" | "staff"
     allowedBusinesses: string[]
 }
 
@@ -224,7 +222,7 @@ export function UsersManagement() {
                                 Add User
                             </Button>
                         </DialogTrigger>
-                        <DialogContent className="max-w-lg w-[95vw] rounded-2xl">
+                        <DialogContent className="max-w-lg w-[95vw] rounded-2xl p-6 overflow-y-auto max-h-[calc(100dvh-4rem)]">
                             <DialogHeader>
                                 <DialogTitle>Add New User</DialogTitle>
                                 <DialogDescription>Create a new user with business access permissions.</DialogDescription>
@@ -250,10 +248,11 @@ export function UsersManagement() {
                                 </div>
                                 <div className="space-y-2">
                                     <Label>Role</Label>
-                                    <Select value={formData.role} onValueChange={(v) => setFormData({ ...formData, role: v as "admin" | "user" })}>
+                                    <Select value={formData.role} onValueChange={(v) => setFormData({ ...formData, role: v as "admin" | "user" | "staff" })}>
                                         <SelectTrigger><SelectValue /></SelectTrigger>
                                         <SelectContent>
                                             <SelectItem value="user">User</SelectItem>
+                                            <SelectItem value="staff">Staff</SelectItem>
                                             <SelectItem value="admin">Admin</SelectItem>
                                         </SelectContent>
                                     </Select>
@@ -303,13 +302,13 @@ export function UsersManagement() {
                             <Card key={user.id} className="border shadow-sm hover:shadow-md transition-all">
                                 <CardContent className="p-4">
                                     <div className="flex items-start gap-3">
-                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${user.role === "admin" ? "bg-amber-100 dark:bg-amber-950/30" : "bg-blue-100 dark:bg-blue-950/30"}`}>
-                                            {user.role === "admin" ? <Shield className="w-4 h-4 text-amber-600" /> : <User className="w-4 h-4 text-blue-600" />}
+                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${user.role === "admin" ? "bg-amber-100 dark:bg-amber-950/30" : user.role === "staff" ? "bg-green-100 dark:bg-green-950/30" : "bg-blue-100 dark:bg-blue-950/30"}`}>
+                                            {user.role === "admin" ? <Shield className="w-4 h-4 text-amber-600" /> : user.role === "staff" ? <UserCog className="w-4 h-4 text-green-600" /> : <User className="w-4 h-4 text-blue-600" />}
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <div className="flex items-center gap-2 flex-wrap">
                                                 <p className="text-base font-semibold truncate">{user.name}</p>
-                                                <Badge variant={user.role === "admin" ? "default" : "secondary"} className="text-[10px] uppercase">{user.role}</Badge>
+                                                <Badge variant={user.role === "admin" ? "default" : user.role === "staff" ? "outline" : "secondary"} className={`text-[10px] uppercase ${user.role === "staff" ? "text-green-600 border-green-300" : ""}`}>{user.role}</Badge>
                                                 {isCurrentUser && <Badge variant="outline" className="text-[10px]">You</Badge>}
                                             </div>
                                             <p className="text-xs text-muted-foreground">{user.email}</p>
@@ -353,7 +352,7 @@ export function UsersManagement() {
 
             {/* Edit Dialog */}
             <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-                <DialogContent className="max-w-lg w-[95vw] rounded-2xl">
+                <DialogContent className="max-w-lg w-[95vw] rounded-2xl p-6 overflow-y-auto max-h-[calc(100dvh-4rem)]">
                     <DialogHeader>
                         <DialogTitle>Edit User</DialogTitle>
                         <DialogDescription>Update user details and business access.</DialogDescription>
@@ -374,10 +373,11 @@ export function UsersManagement() {
                         </div>
                         <div className="space-y-2">
                             <Label>Role</Label>
-                            <Select value={formData.role} onValueChange={(v) => setFormData({ ...formData, role: v as "admin" | "user" })}>
+                            <Select value={formData.role} onValueChange={(v) => setFormData({ ...formData, role: v as "admin" | "user" | "staff" })}>
                                 <SelectTrigger><SelectValue /></SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="user">User</SelectItem>
+                                    <SelectItem value="staff">Staff</SelectItem>
                                     <SelectItem value="admin">Admin</SelectItem>
                                 </SelectContent>
                             </Select>

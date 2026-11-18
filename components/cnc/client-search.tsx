@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useRef, useCallback } from "react"
 import { useCNC, type Order, type Client } from "@/lib/contexts/cnc-context"
+import { usePermissions } from "@/lib/hooks/use-permissions"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -25,6 +26,7 @@ import {
 
 export function ClientSearch() {
     const { clients, orders, materials, loading, updateOrder } = useCNC()
+    const { canViewFinancials } = usePermissions()
     const [searchQuery, setSearchQuery] = useState("")
     const [selectedClient, setSelectedClient] = useState<Client | null>(null)
     const [showPaymentDialog, setShowPaymentDialog] = useState<Order | null>(null)
@@ -294,30 +296,34 @@ export function ClientSearch() {
                                 <p className="text-lg font-bold text-foreground">{summary.totalOrders}</p>
                             </CardContent>
                         </Card>
-                        <Card className="border shadow-sm">
-                            <CardContent className="p-4">
-                                <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Total Business</p>
-                                <p className="text-lg font-bold text-foreground">₹{summary.totalValue.toLocaleString("en-IN")}</p>
-                            </CardContent>
-                        </Card>
-                        <Card className="border shadow-sm">
-                            <CardContent className="p-4">
-                                <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Amount Paid</p>
-                                <p className="text-lg font-bold text-green-600">₹{summary.totalPaid.toLocaleString("en-IN")}</p>
-                            </CardContent>
-                        </Card>
-                        <Card className={`border shadow-sm ${summary.totalPending > 0 ? "bg-amber-50/50 dark:bg-amber-950/20" : ""}`}>
-                            <CardContent className="p-4">
-                                <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Pending</p>
-                                <p className={`text-lg font-bold ${summary.totalPending > 0 ? "text-amber-600" : "text-foreground"}`}>
-                                    ₹{summary.totalPending.toLocaleString("en-IN")}
-                                </p>
-                            </CardContent>
-                        </Card>
+                        {canViewFinancials && (
+                            <>
+                                <Card className="border shadow-sm">
+                                    <CardContent className="p-4">
+                                        <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Total Business</p>
+                                        <p className="text-lg font-bold text-foreground">₹{summary.totalValue.toLocaleString("en-IN")}</p>
+                                    </CardContent>
+                                </Card>
+                                <Card className="border shadow-sm">
+                                    <CardContent className="p-4">
+                                        <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Amount Paid</p>
+                                        <p className="text-lg font-bold text-green-600">₹{summary.totalPaid.toLocaleString("en-IN")}</p>
+                                    </CardContent>
+                                </Card>
+                                <Card className={`border shadow-sm ${summary.totalPending > 0 ? "bg-amber-50/50 dark:bg-amber-950/20" : ""}`}>
+                                    <CardContent className="p-4">
+                                        <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Pending</p>
+                                        <p className={`text-lg font-bold ${summary.totalPending > 0 ? "text-amber-600" : "text-foreground"}`}>
+                                            ₹{summary.totalPending.toLocaleString("en-IN")}
+                                        </p>
+                                    </CardContent>
+                                </Card>
+                            </>
+                        )}
                     </div>
 
                     {/* Pending Payments Section */}
-                    {summary.pendingOrders.length > 0 && (
+                    {canViewFinancials && summary.pendingOrders.length > 0 && (
                         <Card className="border shadow-sm bg-amber-50/30 dark:bg-amber-950/10">
                             <CardHeader className="py-3 px-4 border-b">
                                 <CardTitle className="text-base font-semibold flex items-center gap-2 text-amber-700 dark:text-amber-400">
@@ -403,14 +409,16 @@ export function ClientSearch() {
                                                             </div>
                                                         )}
                                                     </div>
-                                                    <div className="text-right shrink-0">
-                                                        <p className="text-sm font-bold">₹{(order.totalValue || 0).toLocaleString("en-IN")}</p>
-                                                        {(order.balanceAmount || 0) > 0 ? (
-                                                            <p className="text-xs text-amber-600">Due: ₹{(order.balanceAmount || 0).toLocaleString("en-IN")}</p>
-                                                        ) : (
-                                                            <p className="text-xs text-green-600">Paid ✓</p>
-                                                        )}
-                                                    </div>
+                                                    {canViewFinancials && (
+                                                        <div className="text-right shrink-0">
+                                                            <p className="text-sm font-bold">₹{(order.totalValue || 0).toLocaleString("en-IN")}</p>
+                                                            {(order.balanceAmount || 0) > 0 ? (
+                                                                <p className="text-xs text-amber-600">Due: ₹{(order.balanceAmount || 0).toLocaleString("en-IN")}</p>
+                                                            ) : (
+                                                                <p className="text-xs text-green-600">Paid ✓</p>
+                                                            )}
+                                                        </div>
+                                                    )}
                                                 </div>
                                                 {/* Order Actions */}
                                                 <div className="flex flex-wrap items-center gap-2 mt-2 pt-2 border-t border-border/50">
@@ -429,7 +437,7 @@ export function ClientSearch() {
                                                             ))}
                                                         </SelectContent>
                                                     </Select>
-                                                    {(order.balanceAmount || 0) > 0 && (
+                                                    {(order.balanceAmount || 0) > 0 && canViewFinancials && (
                                                         <Button
                                                             size="sm"
                                                             className="h-7 text-xs bg-green-600 hover:bg-green-700"
@@ -465,7 +473,7 @@ export function ClientSearch() {
 
             {/* Payment Dialog */}
             <Dialog open={!!showPaymentDialog} onOpenChange={(o) => !o && setShowPaymentDialog(null)}>
-                <DialogContent className="max-w-md w-[95vw] rounded-2xl">
+                <DialogContent className="max-w-md w-[95vw] rounded-2xl p-6 overflow-y-auto max-h-[calc(100dvh-4rem)]">
                     <DialogHeader>
                         <DialogTitle>Record Payment</DialogTitle>
                     </DialogHeader>
@@ -525,7 +533,7 @@ export function ClientSearch() {
                             </div>
 
                             {/* Payment Method */}
-                            <div className="grid grid-cols-2 gap-3">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <div className="space-y-2">
                                     <Label className="text-xs">Payment Method</Label>
                                     <Select value={paymentMethod} onValueChange={(v) => {

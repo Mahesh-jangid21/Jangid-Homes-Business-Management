@@ -11,8 +11,8 @@ const createUserSchema = z.object({
     email: z.string().email('Invalid email address'),
     password: z.string().min(8, 'Password must be at least 8 characters'),
     name: z.string().min(1, 'Name is required'),
-    role: z.enum(['admin', 'user']).default('user'),
-    allowedBusinesses: z.array(z.enum(['cnc-shop', 'interiors', 'drapes'])).min(1, 'At least one business access is required'),
+    role: z.enum(['admin', 'user', 'staff']).default('user'),
+    allowedBusinesses: z.array(z.enum(['cnc-shop'])).min(1, 'At least one business access is required'),
 })
 
 // GET - List all users (admin only)
@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
                 email: user.email,
                 name: user.name,
                 role: user.role,
-                allowedBusinesses: user.allowedBusinesses || ['cnc-shop', 'interiors', 'drapes'],
+                allowedBusinesses: user.allowedBusinesses || ['cnc-shop'],
                 createdAt: user.createdAt,
             })),
         })

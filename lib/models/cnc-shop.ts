@@ -95,8 +95,8 @@ export interface IOrder extends Document {
     }
     designType: string
     materials: {
-        materialId: mongoose.Types.ObjectId
-        materialSnapshot: {  // Snapshot of material data at order time
+        materialId?: mongoose.Types.ObjectId
+        materialSnapshot?: {  // Snapshot of material data at order time
             type: string
             size: string
             thickness: number
@@ -105,6 +105,14 @@ export interface IOrder extends Document {
         width?: number
         height?: number
         cost: number
+        isClientMaterial?: boolean
+        materialUsageType?: 'full_sheet' | 'wastage_only' | 'full_plus_wastage'
+        extraWastageWidth?: number
+        extraWastageHeight?: number
+        extraWastagePieces?: number
+        extraWastageCost?: number
+        pieces?: number
+        wastageQuantity?: number
     }[]
     labourCost: number
     totalValue: number
@@ -117,7 +125,18 @@ export interface IOrder extends Document {
     }[]
     balanceAmount: number
     deliveryDate: Date
-    status: 'Pending' | 'In Progress' | 'Completed' | 'Billed'
+    status:
+        | 'Pending'
+        | 'Quotation Sent'
+        | 'Design Pending'
+        | 'Design Sent'
+        | 'Design Approved'
+        | 'In Progress'
+        | 'Ready for Pickup'
+        | 'Completed'
+        | 'Delivered'
+        | 'Billed'
+        | 'Cancelled'
     createdAt: Date
     updatedAt: Date
 }
@@ -136,7 +155,7 @@ const OrderSchema = new Schema<IOrder>(
         designType: { type: String, required: true },
         materials: [
             {
-                materialId: { type: Schema.Types.ObjectId, ref: 'Material' },
+                materialId: { type: Schema.Types.ObjectId, ref: 'Material', required: false, default: null },
                 materialSnapshot: {
                     type: { type: String },
                     size: { type: String },
@@ -146,6 +165,18 @@ const OrderSchema = new Schema<IOrder>(
                 width: { type: Number },
                 height: { type: Number },
                 cost: { type: Number },
+                isClientMaterial: { type: Boolean, default: false },
+                materialUsageType: {
+                    type: String,
+                    enum: ['full_sheet', 'wastage_only', 'full_plus_wastage'],
+                    default: 'full_sheet'
+                },
+                extraWastageWidth: { type: Number },
+                extraWastageHeight: { type: Number },
+                extraWastagePieces: { type: Number, default: 1 },
+                extraWastageCost: { type: Number, default: 0 },
+                pieces: { type: Number, default: 1 },
+                wastageQuantity: { type: Number, default: 0 },
             },
         ],
         labourCost: { type: Number, default: 0 },
@@ -163,7 +194,19 @@ const OrderSchema = new Schema<IOrder>(
         deliveryDate: { type: Date },
         status: {
             type: String,
-            enum: ['Pending', 'In Progress', 'Completed', 'Billed'],
+            enum: [
+                'Pending',
+                'Quotation Sent',
+                'Design Pending',
+                'Design Sent',
+                'Design Approved',
+                'In Progress',
+                'Ready for Pickup',
+                'Completed',
+                'Delivered',
+                'Billed',
+                'Cancelled'
+            ],
             default: 'Pending',
         },
     },
